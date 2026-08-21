@@ -1,0 +1,9 @@
+{
+  "name": "receipt-photo-booth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Receipt Photo Booth frontend and local prototype backend",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

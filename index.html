@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5efe6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Receipt Photo Booth</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="booth-shell">
+    <div class="topbar">
+      <span class="brand-mark">RPB</span>
+      <span class="session-label" id="sessionLabel">READY WHEN YOU ARE</span>
+    </div>
+
+    <section class="screen screen--active" data-screen="start" aria-labelledby="startTitle">
+      <div class="start-art" aria-hidden="true"><span>01</span><span>CAPTURE<br>THE DAY</span></div>
+      <div class="start-copy">
+        <p class="eyebrow">RECEIPT PHOTO BOOTH</p>
+        <h1 id="startTitle">Keep the<br><em>little moments.</em></h1>
+        <p class="start-note">A tiny portrait, printed like a keepsake.</p>
+      </div>
+      <button class="slide-prompt" id="slidePrompt" type="button" aria-label="Slide up to start">
+        <span class="slide-arrow">↑</span><span>SLIDE UP TO START</span>
+      </button>
+    </section>
+
+    <section class="screen" data-screen="quantity" aria-labelledby="quantityTitle">
+      <div class="screen-heading"><p class="eyebrow">STEP 01 / 03</p><h2 id="quantityTitle">How many<br><em>keepsakes?</em></h2></div>
+      <div class="quantity-grid" id="quantityGrid">
+        <button class="quantity-option" data-quantity="1" type="button"><strong>01</strong><span>PRINT</span><b>฿50</b></button>
+        <button class="quantity-option" data-quantity="2" type="button"><strong>02</strong><span>PRINTS</span><b>฿100</b></button>
+        <button class="quantity-option" data-quantity="3" type="button"><strong>03</strong><span>PRINTS</span><b>฿150</b></button>
+        <button class="quantity-option" data-quantity="4" type="button"><strong>04</strong><span>PRINTS</span><b>฿200</b></button>
+      </div>
+      <p class="selection-summary" id="quantitySummary">Choose a quantity to continue</p>
+    </section>
+
+    <section class="screen" data-screen="frame" aria-labelledby="frameTitle">
+      <div class="screen-heading"><p class="eyebrow">STEP 02 / 03</p><h2 id="frameTitle">Choose your<br><em>frame.</em></h2></div>
+      <div class="frame-grid" id="frameGrid">
+        <button class="frame-option frame-option--one" data-frame="assets/frame1.svg" type="button"><span class="frame-preview"><i>01</i></span><b>Paper red</b></button>
+        <button class="frame-option frame-option--two" data-frame="assets/frame2.svg" type="button"><span class="frame-preview"><i>02</i></span><b>Blue note</b></button>
+        <button class="frame-option frame-option--three" data-frame="assets/frame3.svg" type="button"><span class="frame-preview"><i>03</i></span><b>Sun print</b></button>
+      </div>
+    </section>
+
+    <section class="screen payment-screen" data-screen="payment" aria-labelledby="paymentTitle">
+      <div class="screen-heading"><p class="eyebrow">STEP 03 / 04</p><h2 id="paymentTitle">Ready to<br><em>pay?</em></h2></div>
+      <div class="payment-panel">
+        <div class="mock-qr" aria-hidden="true"><span>MOCK<br>PAY</span></div>
+        <div class="payment-details"><p class="payment-label">MOCK QR PAYMENT</p><strong id="paymentAmount">฿0</strong><p id="paymentDescription">Your payment is simulated for development.</p><button class="button button--solid" id="mockPaymentButton" type="button">SIMULATE PAYMENT <span>↗</span></button><p class="payment-status" id="paymentStatus">WAITING FOR PAYMENT</p></div>
+      </div>
+    </section>
+
+    <section class="screen camera-screen" data-screen="camera" aria-labelledby="cameraTitle">
+      <div class="camera-heading"><p class="eyebrow">STEP 03 / 03</p><h2 id="cameraTitle">Make it<br><em>yours.</em></h2></div>
+      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="camera-crosshair" aria-hidden="true"></div><div class="countdown" id="countdown" aria-live="assertive"></div></div>
+      <p class="status-message" id="cameraMessage">Camera is ready.</p>
+      <button class="capture-button" id="captureButton" type="button"><span>TAKE PHOTO</span><i>↗</i></button>
+    </section>
+
+    <section class="screen preview-screen" data-screen="preview" aria-labelledby="previewTitle">
+      <div class="screen-heading"><p class="eyebrow">YOUR KEEPSAKE</p><h2 id="previewTitle">Looks like<br><em>a memory.</em></h2></div>
+      <div class="photo-preview-wrap"><img id="photoPreview" alt="Your composed photo preview"></div>
+      <div class="action-row"><button class="button button--quiet" id="retakeButton" type="button">RETAKE</button><button class="button button--solid" id="confirmButton" type="button">USE THIS PHOTO <span>↗</span></button></div>
+    </section>
+
+    <section class="screen printing-screen" data-screen="printing" aria-labelledby="printingTitle">
+      <div class="printing-stamp" id="printingStamp" aria-hidden="true">RPB<br>...</div>
+      <p class="eyebrow" id="printingEyebrow">MOCK PRINTER</p><h2 id="printingTitle">Printing your<br><em>keepsake.</em></h2>
+      <p class="printing-copy" id="printingCopy">Sending your photo to the simulated printer...</p>
+      <div class="printing-progress" id="printingProgress"><span></span></div>
+      <button class="button button--solid" id="resetButton" type="button">START A NEW SESSION <span>↗</span></button>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <canvas id="photoCanvas" hidden></canvas>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
