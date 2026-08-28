@@ -42,9 +42,9 @@
     <section class="screen" data-screen="frame" aria-labelledby="frameTitle">
       <div class="screen-heading"><p class="eyebrow">STEP 02 / 03</p><h2 id="frameTitle">Choose your<br><em>frame.</em></h2></div>
       <div class="frame-grid" id="frameGrid">
-        <button class="frame-option frame-option--one" data-frame="assets/frame1.svg" type="button"><span class="frame-preview"><i>01</i></span><b>Paper red</b></button>
-        <button class="frame-option frame-option--two" data-frame="assets/frame2.svg" type="button"><span class="frame-preview"><i>02</i></span><b>Blue note</b></button>
-        <button class="frame-option frame-option--three" data-frame="assets/frame3.svg" type="button"><span class="frame-preview"><i>03</i></span><b>Sun print</b></button>
+        <button class="frame-option frame-option--one" data-frame="assets/pic1.png" type="button"><span class="frame-preview"><i>01</i></span><b>New Menu / 01</b></button>
+        <button class="frame-option frame-option--two" data-frame="assets/pic2.png" type="button"><span class="frame-preview"><i>02</i></span><b>New Menu / 02</b></button>
+        <button class="frame-option frame-option--three" data-frame="assets/pic3.png" type="button"><span class="frame-preview"><i>03</i></span><b>New Menu / 03</b></button>
       </div>
     </section>
 
@@ -73,8 +73,19 @@
       <div class="printing-stamp" id="printingStamp" aria-hidden="true">RPB<br>...</div>
       <p class="eyebrow" id="printingEyebrow">MOCK PRINTER</p><h2 id="printingTitle">Printing your<br><em>keepsake.</em></h2>
       <p class="printing-copy" id="printingCopy">Sending your photo to the simulated printer...</p>
+      <video class="printing-video" id="printingVideo" muted playsinline preload="auto" aria-label="Printing animation">
+        <source src="assets/kitchen.mov" type="video/quicktime">
+      </video>
       <div class="printing-progress" id="printingProgress"><span></span></div>
       <button class="button button--solid" id="resetButton" type="button">START A NEW SESSION <span>↗</span></button>
+    </section>
+
+    <section class="screen thankyou-screen" data-screen="thankyou" aria-labelledby="thankyouTitle">
+      <div class="thankyou-mark" aria-hidden="true">RPB<br>OK</div>
+      <p class="eyebrow">PRINT COMPLETE</p>
+      <h2 id="thankyouTitle">Thank you<br><em>for stopping by.</em></h2>
+      <p class="thankyou-copy">Your keepsake is ready. We hope it keeps a little moment close.</p>
+      <button class="button button--solid" id="thankyouResetButton" type="button">START A NEW SESSION <span>↗</span></button>
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

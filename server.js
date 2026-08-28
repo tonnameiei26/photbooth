@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
 const sessions = new Map();
 const allowedStates = new Set(['IDLE', 'SELECT_QUANTITY', 'SELECT_FRAME', 'WAIT_PAYMENT', 'CAMERA', 'PREVIEW', 'PRINTING', 'DONE', 'TIMEOUT']);
-const mimeTypes = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg' };
+const mimeTypes = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.mov': 'video/quicktime' };
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
@@ -109,11 +109,28 @@ async function handleApi(request, response, url) {
   sendError(response, 404, 'API route not found');
 }
 
-function serveStatic(response, pathname) {
+function serveStatic(request, response, pathname) {
   const requestedPath = pathname === '/' ? '/index.html' : pathname;
   const filePath = path.resolve(ROOT, `.${requestedPath}`);
   if (!filePath.startsWith(ROOT) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) return sendError(response, 404, 'File not found');
-  response.writeHead(200, { 'Content-Type': mimeTypes[path.extname(filePath)] || 'application/octet-stream' });
+  const fileStats = fs.statSync(filePath);
+  const contentType = mimeTypes[path.extname(filePath)] || 'application/octet-stream';
+  const range = request.headers.range;
+  if (range && contentType.startsWith('video/')) {
+    const match = range.match(/bytes=(\d*)-(\d*)/);
+    if (match) {
+      const start = match[1] ? Number(match[1]) : 0;
+      const requestedEnd = match[2] ? Number(match[2]) : fileStats.size - 1;
+      const end = Math.min(requestedEnd, fileStats.size - 1);
+      if (start <= end && start < fileStats.size) {
+        response.writeHead(206, { 'Content-Type': contentType, 'Content-Length': end - start + 1, 'Content-Range': `bytes ${start}-${end}/${fileStats.size}`, 'Accept-Ranges': 'bytes' });
+        return fs.createReadStream(filePath, { start, end }).pipe(response);
+      }
+    }
+    response.writeHead(416, { 'Content-Range': `bytes */${fileStats.size}` });
+    return response.end();
+  }
+  response.writeHead(200, { 'Content-Type': contentType, 'Content-Length': fileStats.size, 'Accept-Ranges': contentType.startsWith('video/') ? 'bytes' : 'none' });
   fs.createReadStream(filePath).pipe(response);
 }
 
@@ -125,7 +142,7 @@ const server = http.createServer(async (request, response) => {
   }
   try {
     if (url.pathname.startsWith('/api/')) await handleApi(request, response, url);
-    else if (request.method === 'GET') serveStatic(response, url.pathname);
+    else if (request.method === 'GET') serveStatic(request, response, url.pathname);
     else sendError(response, 405, 'Method not allowed');
   } catch (error) {
     sendError(response, error.message === 'Request body is too large' ? 413 : 400, error.message);

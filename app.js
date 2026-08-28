@@ -27,9 +27,14 @@ const printingEyebrow = document.querySelector('#printingEyebrow');
 const printingTitle = document.querySelector('#printingTitle');
 const printingCopy = document.querySelector('#printingCopy');
 const printingStamp = document.querySelector('#printingStamp');
+const printingVideo = document.querySelector('#printingVideo');
+const printingProgress = document.querySelector('#printingProgress');
+const startScreen = document.querySelector('[data-screen="start"]');
 const prices = { 1: 50, 2: 100, 3: 150, 4: 200 };
 let touchStartY = null;
+let touchDistance = 0;
 let toastTimer = null;
+let startTransitionTimer = null;
 
 async function apiRequest(endpoint, options = {}) {
   try {
@@ -73,6 +78,18 @@ function showScreen(screenName) {
   state.screen = screenName;
   sessionLabel.textContent = screenName === 'start' ? 'READY WHEN YOU ARE' : `${screenName.toUpperCase()} / RPB`;
   if (screenName !== 'camera') stopCamera();
+}
+
+function startSession() {
+  if (state.screen !== 'start' || startTransitionTimer) return;
+  const startScreen = document.querySelector('[data-screen="start"]');
+  startScreen.classList.remove('is-dragging');
+  startScreen.classList.add('is-leaving');
+  startTransitionTimer = setTimeout(() => {
+    startTransitionTimer = null;
+    startScreen.classList.remove('is-leaving');
+    showScreen('quantity');
+  }, 450);
 }
 
 function notify(message) {
@@ -146,11 +163,14 @@ async function completeMockPayment() {
 }
 
 function showPrintingComplete() {
+  printingVideo.hidden = true;
+  printingScreen.classList.remove('is-video-playing');
   printingScreen.classList.add('is-done');
   printingEyebrow.textContent = 'MOCK PRINTER / DONE';
   printingTitle.innerHTML = 'Your photo is<br><em>ready.</em>';
   printingCopy.textContent = 'Mock print completed successfully. The real printer can replace this service later.';
   printingStamp.innerHTML = 'RPB<br>OK';
+  showScreen('thankyou');
 }
 
 function clearCountdown() {
@@ -231,16 +251,17 @@ async function capturePhoto() {
     return;
   }
   try {
-    const width = 1080;
-    const height = 1440;
+    const width = 945;
+    const height = 1772;
+    const photoWindow = { x: 141, y: 257, width: 663, height: 666 };
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
-    const crop = drawCover(video, width, height);
+    const crop = drawCover(video, photoWindow.width, photoWindow.height);
     context.save();
     context.translate(width, 0);
     context.scale(-1, 1);
-    context.drawImage(video, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, width, height);
+    context.drawImage(video, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, width - photoWindow.x - photoWindow.width, photoWindow.y, photoWindow.width, photoWindow.height);
     context.restore();
     try {
       const frameImage = await loadFrameImage();
@@ -264,6 +285,8 @@ async function capturePhoto() {
 function resetSession() {
   clearCountdown();
   stopCamera();
+  printingVideo.pause();
+  printingVideo.currentTime = 0;
   state.screen = 'start';
   state.quantity = null;
   state.price = null;
@@ -272,6 +295,7 @@ function resetSession() {
   state.serverSessionId = null;
   state.serverSessionPromise = null;
   printingScreen.classList.remove('is-done');
+  printingScreen.classList.remove('is-video-playing');
   printingEyebrow.textContent = 'MOCK PRINTER';
   printingTitle.innerHTML = 'Printing your<br><em>keepsake.</em>';
   printingCopy.textContent = 'Sending your photo to the simulated printer...';
@@ -284,14 +308,36 @@ function resetSession() {
   showScreen('start');
 }
 
-document.querySelector('#slidePrompt').addEventListener('click', () => showScreen('quantity'));
-document.addEventListener('touchstart', (event) => { if (state.screen === 'start') touchStartY = event.changedTouches[0].clientY; }, { passive: true });
-document.addEventListener('touchend', (event) => {
-  if (state.screen !== 'start' || touchStartY === null) return;
-  const swipeDistance = touchStartY - event.changedTouches[0].clientY;
-  touchStartY = null;
-  if (swipeDistance >= 80) showScreen('quantity');
+startScreen.addEventListener('pointerdown', (event) => {
+  if (state.screen !== 'start') return;
+  touchStartY = event.clientY;
+  touchDistance = 0;
+  startScreen.setPointerCapture(event.pointerId);
+  startScreen.classList.add('is-dragging');
 }, { passive: true });
+startScreen.addEventListener('pointermove', (event) => {
+  if (state.screen !== 'start' || touchStartY === null) return;
+  touchDistance = Math.max(0, touchStartY - event.clientY);
+  startScreen.style.transform = `translateY(-${Math.min(touchDistance, window.innerHeight * 0.5)}px)`;
+  event.preventDefault();
+}, { passive: false });
+startScreen.addEventListener('pointerup', (event) => {
+  if (state.screen !== 'start' || touchStartY === null) return;
+  const swipeDistance = Math.max(touchDistance, touchStartY - event.clientY);
+  touchStartY = null;
+  touchDistance = 0;
+  startScreen.releasePointerCapture(event.pointerId);
+  startScreen.classList.remove('is-dragging');
+  startScreen.style.transform = '';
+  if (swipeDistance >= window.innerHeight * 0.35) startSession();
+}, { passive: true });
+startScreen.addEventListener('pointercancel', () => {
+  touchStartY = null;
+  touchDistance = 0;
+  startScreen.classList.remove('is-dragging');
+  startScreen.style.transform = '';
+}, { passive: true });
+startScreen.addEventListener('click', startSession);
 document.querySelector('#quantityGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-quantity]'); if (option) selectQuantity(Number(option.dataset.quantity)); });
 document.querySelector('#frameGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-frame]'); if (option) selectFrame(option.dataset.frame); });
 paymentButton.addEventListener('click', completeMockPayment);
@@ -306,7 +352,24 @@ document.querySelector('#confirmButton').addEventListener('click', async () => {
     if (!result) return;
   }
   showScreen('printing');
+  printingScreen.classList.add('is-video-playing');
+  printingVideo.currentTime = 0;
+  printingVideo.hidden = false;
+  printingProgress.hidden = true;
+  printingVideo.play().catch(() => {
+    printingScreen.classList.remove('is-video-playing');
+    printingVideo.hidden = true;
+    printingProgress.hidden = false;
+    setTimeout(showPrintingComplete, 3200);
+  });
+});
+printingVideo.addEventListener('ended', () => setTimeout(showPrintingComplete, 250));
+printingVideo.addEventListener('error', () => {
+  printingScreen.classList.remove('is-video-playing');
+  printingVideo.hidden = true;
+  printingProgress.hidden = false;
   setTimeout(showPrintingComplete, 3200);
 });
 document.querySelector('#resetButton').addEventListener('click', resetSession);
+document.querySelector('#thankyouResetButton').addEventListener('click', resetSession);
 window.addEventListener('pagehide', () => { clearCountdown(); stopCamera(); });
