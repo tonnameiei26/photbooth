@@ -143,6 +143,7 @@ function selectFrame(frameSrc) {
   paymentAmount.textContent = `฿${state.price || 0}`;
   paymentStatus.textContent = 'WAITING FOR PAYMENT';
   paymentStatus.classList.remove('is-paid');
+  paymentButton.disabled = false;
   syncServerSession({ frame: frameSrc, state: 'WAIT_PAYMENT' });
   showScreen('payment');
 }

@@ -5,5 +5,9 @@
   "description": "Receipt Photo Booth frontend and local prototype backend",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "sharp": "^0.35.4"
   }
 }
