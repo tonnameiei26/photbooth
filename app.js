@@ -78,6 +78,7 @@ function showScreen(screenName) {
   state.screen = screenName;
   sessionLabel.textContent = screenName === 'start' ? 'READY WHEN YOU ARE' : `${screenName.toUpperCase()} / RPB`;
   if (screenName !== 'camera') stopCamera();
+  if (screenName === 'frame') frameSwiper.update();
 }
 
 function startSession() {
@@ -107,7 +108,7 @@ async function initCamera() {
     return false;
   }
   try {
-    state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
     video.srcObject = state.cameraStream;
     await video.play();
     cameraMessage.textContent = 'Camera is ready.';
@@ -137,14 +138,45 @@ function selectQuantity(quantity) {
   setTimeout(() => showScreen('frame'), 180);
 }
 
-function selectFrame(frameSrc) {
-  state.frame = frameSrc;
-  document.querySelectorAll('.frame-option').forEach((button) => button.classList.toggle('selected', button.dataset.frame === frameSrc));
+const FRAMES = [
+  { src: 'assets/pic1.png', thumb: 'assets/thumbs/pic1-thumb.png', label: 'Frame 01' },
+  { src: 'assets/pic2.png', thumb: 'assets/thumbs/pic2-thumb.png', label: 'Frame 02' },
+  { src: 'assets/pic3.png', thumb: 'assets/thumbs/pic3-thumb.png', label: 'Frame 03' }
+];
+// Swiper's infinite loop needs enough real slides to work with, or it silently
+// disables looping when there are only a handful of wide, centered slides.
+// Repeating the same 3 frames a few times keeps looping seamless either direction.
+// The carousel shows lightweight thumbnails (not the full print-resolution PNGs)
+// so swiping stays smooth on the iPad; capturePhoto() still composites the
+// full-resolution frame from data-frame when the photo is actually printed.
+const FRAME_LOOP_REPEATS = 3;
+document.querySelector('#frameSwiperWrapper').innerHTML = Array.from({ length: FRAME_LOOP_REPEATS })
+  .flatMap(() => FRAMES)
+  .map(({ src, thumb, label }) => `<div class="swiper-slide frame-slide" data-frame="${src}"><span class="frame-slide-card"><img src="${thumb}" alt="${label}" draggable="false"></span><b class="frame-slide-label">${label}</b></div>`)
+  .join('');
+
+function trackActiveFrame(swiper) {
+  const activeSlide = swiper.slides[swiper.activeIndex];
+  if (activeSlide?.dataset.frame) state.frame = activeSlide.dataset.frame;
+}
+
+const frameSwiper = new Swiper('#frameSwiper', {
+  effect: 'coverflow',
+  loop: true,
+  centeredSlides: true,
+  slidesPerView: 'auto',
+  grabCursor: true,
+  coverflowEffect: { rotate: 32, stretch: 0, depth: 160, modifier: 1, slideShadows: false },
+  on: { init: trackActiveFrame, slideChangeTransitionEnd: trackActiveFrame }
+});
+
+function confirmFrame() {
+  if (!state.frame) return notify('Swipe to choose a frame first.');
   paymentAmount.textContent = `฿${state.price || 0}`;
   paymentStatus.textContent = 'WAITING FOR PAYMENT';
   paymentStatus.classList.remove('is-paid');
   paymentButton.disabled = false;
-  syncServerSession({ frame: frameSrc, state: 'WAIT_PAYMENT' });
+  syncServerSession({ frame: state.frame, state: 'WAIT_PAYMENT' });
   showScreen('payment');
 }
 
@@ -295,6 +327,8 @@ function resetSession() {
   state.photo = null;
   state.serverSessionId = null;
   state.serverSessionPromise = null;
+  frameSwiper.slideToLoop(0, 0, false);
+  trackActiveFrame(frameSwiper);
   printingScreen.classList.remove('is-done');
   printingScreen.classList.remove('is-video-playing');
   printingEyebrow.textContent = 'MOCK PRINTER';
@@ -340,7 +374,7 @@ startScreen.addEventListener('pointercancel', () => {
 }, { passive: true });
 startScreen.addEventListener('click', startSession);
 document.querySelector('#quantityGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-quantity]'); if (option) selectQuantity(Number(option.dataset.quantity)); });
-document.querySelector('#frameGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-frame]'); if (option) selectFrame(option.dataset.frame); });
+document.querySelector('#frameConfirmButton').addEventListener('click', confirmFrame);
 paymentButton.addEventListener('click', completeMockPayment);
 document.querySelector('#captureButton').addEventListener('click', startCountdown);
 document.querySelector('#retakeButton').addEventListener('click', () => { showScreen('camera'); initCamera(); });

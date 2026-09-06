@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Receipt Photo Booth</title>
+  <link rel="stylesheet" href="assets/vendor/swiper-bundle.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -43,11 +44,10 @@
 
     <section class="screen" data-screen="frame" aria-labelledby="frameTitle">
       <div class="screen-heading"><p class="eyebrow">STEP 02 / 03</p><h2 id="frameTitle">Choose your<br><em>frame.</em></h2></div>
-      <div class="frame-grid" id="frameGrid">
-        <button class="frame-option frame-option--one" data-frame="assets/pic1.png" type="button"><span class="frame-preview"><i>01</i></span><b>New Menu / 01</b></button>
-        <button class="frame-option frame-option--two" data-frame="assets/pic2.png" type="button"><span class="frame-preview"><i>02</i></span><b>New Menu / 02</b></button>
-        <button class="frame-option frame-option--three" data-frame="assets/pic3.png" type="button"><span class="frame-preview"><i>03</i></span><b>New Menu / 03</b></button>
+      <div class="swiper frame-swiper" id="frameSwiper">
+        <div class="swiper-wrapper" id="frameSwiperWrapper"></div>
       </div>
+      <button class="button button--solid frame-confirm" id="frameConfirmButton" type="button">USE THIS FRAME <span>↗</span></button>
     </section>
 
     <section class="screen payment-screen" data-screen="payment" aria-labelledby="paymentTitle">
@@ -58,6 +58,7 @@
       </div>
     </section>
 
+    
     <section class="screen camera-screen" data-screen="camera" aria-labelledby="cameraTitle">
       <div class="camera-heading"><p class="eyebrow">STEP 03 / 03</p><h2 id="cameraTitle">Make it<br><em>yours.</em></h2></div>
       <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="camera-crosshair" aria-hidden="true"></div><div class="countdown" id="countdown" aria-live="assertive"></div></div>
@@ -93,6 +94,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
+  <script src="assets/vendor/swiper-bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

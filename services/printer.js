@@ -9,20 +9,29 @@ const ESC_INIT = Buffer.from([0x1b, 0x40]);
 const CUT = Buffer.from([0x1d, 0x56, 0x01]);
 const FEED = Buffer.from([0x0a, 0x0a, 0x0a, 0x0a]);
 
+// Serpentine (boustrophedon) scan: alternating scan direction per row cancels out
+// the diagonal "worm trail" streaking that plain left-to-right Floyd-Steinberg
+// leaves in flat midtone areas like skin and walls.
 function floydSteinbergDither(pixels, width, height) {
   const values = Float32Array.from(pixels);
   const at = (x, y) => y * width + x;
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+    const leftToRight = y % 2 === 0;
+    const dir = leftToRight ? 1 : -1;
+    const xStart = leftToRight ? 0 : width - 1;
+    const xStop = leftToRight ? width : -1;
+    for (let x = xStart; x !== xStop; x += dir) {
       const index = at(x, y);
       const old = values[index];
       const newValue = old < 128 ? 0 : 255;
       const error = old - newValue;
       values[index] = newValue;
-      if (x + 1 < width) values[at(x + 1, y)] += (error * 7) / 16;
-      if (x - 1 >= 0 && y + 1 < height) values[at(x - 1, y + 1)] += (error * 3) / 16;
+      const fx = x + dir;
+      const bx = x - dir;
+      if (fx >= 0 && fx < width) values[at(fx, y)] += (error * 7) / 16;
+      if (bx >= 0 && bx < width && y + 1 < height) values[at(bx, y + 1)] += (error * 3) / 16;
       if (y + 1 < height) values[at(x, y + 1)] += (error * 5) / 16;
-      if (x + 1 < width && y + 1 < height) values[at(x + 1, y + 1)] += (error * 1) / 16;
+      if (fx >= 0 && fx < width && y + 1 < height) values[at(fx, y + 1)] += (error * 1) / 16;
     }
   }
   return values;
@@ -46,6 +55,10 @@ async function dataUrlToRaster(dataUrl) {
     .flatten({ background: '#ffffff' })
     .resize({ width: PRINT_WIDTH_DOTS })
     .grayscale()
+    .median(3)
+    .clahe({ width: 24, height: 24, maxSlope: 2 })
+    .linear(1.08, 22)
+    .sharpen({ sigma: 1.4, m1: 1.5, m2: 2.5 })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
