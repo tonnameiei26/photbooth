@@ -14,11 +14,11 @@ const CERT_PATH = path.join(CERT_DIR, 'cert.pem');
 const KEY_PATH = path.join(CERT_DIR, 'key.pem');
 
 const sessions = new Map();
-const allowedStates = new Set(['IDLE', 'SELECT_QUANTITY', 'SELECT_FRAME', 'WAIT_PAYMENT', 'CAMERA', 'PREVIEW', 'PRINTING', 'DONE', 'TIMEOUT']);
+const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SELECT_PRINT_COPIES', 'PRINTING', 'DONE', 'TIMEOUT']);
 
 function createSession() {
   const now = new Date().toISOString();
-  const session = { id: crypto.randomUUID(), state: 'IDLE', quantity: null, price: null, frame: null, photo: null, payment: 'NOT_REQUIRED', print: 'NOT_STARTED', createdAt: now, updatedAt: now };
+  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', createdAt: now, updatedAt: now };
   sessions.set(session.id, session);
   return session;
 }
@@ -60,19 +60,16 @@ api.patch('/sessions/:id', requireSession, (request, response) => {
     if (!allowedStates.has(payload.state)) return response.status(400).json({ error: 'Invalid session state' });
     changes.state = payload.state;
   }
-  if (payload.quantity !== undefined) {
-    if (!Number.isInteger(payload.quantity) || payload.quantity < 1 || payload.quantity > 4) return response.status(400).json({ error: 'Quantity must be an integer from 1 to 4' });
-    changes.quantity = payload.quantity;
-    changes.price = payload.quantity * 50;
+  if (payload.photoCount !== undefined) {
+    if (!Number.isInteger(payload.photoCount) || payload.photoCount < 1 || payload.photoCount > 4) return response.status(400).json({ error: 'photoCount must be an integer from 1 to 4' });
+    changes.photoCount = payload.photoCount;
   }
   if (payload.frame !== undefined) changes.frame = String(payload.frame);
+  if (payload.printCopies !== undefined) {
+    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > 4) return response.status(400).json({ error: 'printCopies must be an integer from 1 to 4' });
+    changes.printCopies = payload.printCopies;
+  }
   response.json({ session: updateSession(request.session, changes) });
-});
-
-api.post('/sessions/:id/payment/mock', requireSession, (request, response) => {
-  const session = request.session;
-  if (!session.quantity || !session.price) return response.status(409).json({ error: 'Quantity must be selected before payment' });
-  response.json({ session: updateSession(session, { state: 'CAMERA', payment: 'SUCCESS', paidAt: new Date().toISOString() }) });
 });
 
 api.post('/sessions/:id/photo', requireSession, (request, response) => {
@@ -83,10 +80,16 @@ api.post('/sessions/:id/photo', requireSession, (request, response) => {
 
 api.post('/sessions/:id/print', requireSession, (request, response) => {
   const session = request.session;
+  const payload = request.body || {};
+  let printCopies = session.printCopies || 1;
+  if (payload.printCopies !== undefined) {
+    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > 4) return response.status(400).json({ error: 'printCopies must be an integer from 1 to 4' });
+    printCopies = payload.printCopies;
+  }
   if (!session.photo) return response.status(409).json({ error: 'A photo must be uploaded before printing' });
   if (!printer.isReady()) return response.status(503).json({ error: 'Printer is not connected' });
-  updateSession(session, { state: 'PRINTING', print: 'PROCESSING' });
-  printer.printPhoto(session.photo, session.quantity || 1)
+  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies });
+  printer.printPhoto(session.photo, printCopies)
     .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
     .catch((error) => updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message }));
   response.status(202).json({ session });

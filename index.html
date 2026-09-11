@@ -7,69 +7,93 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Receipt Photo Booth</title>
-  <link rel="stylesheet" href="assets/vendor/swiper-bundle.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="booth-shell">
-    <div class="topbar">
-      <span class="brand-mark">RPB</span>
-      <span class="session-label" id="sessionLabel">READY WHEN YOU ARE</span>
-    </div>
-
-    
-
-    <section class="screen screen--active" data-screen="start" aria-labelledby="startTitle">
-      <div class="start-art" aria-hidden="true"><span>01</span><span>CAPTURE<br>THE DAY</span></div>
-      <div class="start-copy">
-        <p class="eyebrow">RECEIPT PHOTO BOOTH</p>
-        <h1 id="startTitle">Keep the<br><em>little moments.</em></h1>
-        <p class="start-note">A tiny portrait, printed like a keepsake.</p>
-      </div>
-      <button class="slide-prompt" id="slidePrompt" type="button" aria-label="Slide up to start">
-        <span class="slide-arrow">↑</span><span>SLIDE UP TO START</span>
-      </button>
+    <section class="screen screen--active start-hero-screen" data-screen="start" aria-label="Snaplicious Studio - touch the screen to start">
+      <img class="start-hero" src="assets/first.png" alt="Snaplicious Studio - Snap Your Moments - touch the screen to start">
     </section>
 
-    <section class="screen" data-screen="quantity" aria-labelledby="quantityTitle">
-      <div class="screen-heading"><p class="eyebrow">STEP 01 / 03</p><h2 id="quantityTitle">How many<br><em>keepsakes?</em></h2></div>
-      <div class="quantity-grid" id="quantityGrid">
-        <button class="quantity-option" data-quantity="1" type="button"><strong>01</strong><span>PRINT</span><b>฿50</b></button>
-        <button class="quantity-option" data-quantity="2" type="button"><strong>02</strong><span>PRINTS</span><b>฿100</b></button>
-        <button class="quantity-option" data-quantity="3" type="button"><strong>03</strong><span>PRINTS</span><b>฿150</b></button>
-        <button class="quantity-option" data-quantity="4" type="button"><strong>04</strong><span>PRINTS</span><b>฿200</b></button>
-      </div>
-      <p class="selection-summary" id="quantitySummary">Choose a quantity to continue</p>
-    </section>
-
-    <section class="screen" data-screen="frame" aria-labelledby="frameTitle">
-      <div class="screen-heading"><p class="eyebrow">STEP 02 / 03</p><h2 id="frameTitle">Choose your<br><em>frame.</em></h2></div>
-      <div class="swiper frame-swiper" id="frameSwiper">
-        <div class="swiper-wrapper" id="frameSwiperWrapper"></div>
-      </div>
-      <button class="button button--solid frame-confirm" id="frameConfirmButton" type="button">USE THIS FRAME <span>↗</span></button>
-    </section>
-
-    <section class="screen payment-screen" data-screen="payment" aria-labelledby="paymentTitle">
-      <div class="screen-heading"><p class="eyebrow">STEP 03 / 04</p><h2 id="paymentTitle">Ready to<br><em>pay?</em></h2></div>
-      <div class="payment-panel">
-        <div class="mock-qr" aria-hidden="true"><span>MOCK<br>PAY</span></div>
-        <div class="payment-details"><p class="payment-label">MOCK QR PAYMENT</p><strong id="paymentAmount">฿0</strong><p id="paymentDescription">Your payment is simulated for development.</p><button class="button button--solid" id="mockPaymentButton" type="button">SIMULATE PAYMENT <span>↗</span></button><p class="payment-status" id="paymentStatus">WAITING FOR PAYMENT</p></div>
+    <section class="screen brand-screen" data-screen="shots" aria-labelledby="shotsTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <button class="pill-button corner-button corner-button--top" id="shotsNextButton" type="button">Next</button>
+      <h2 class="script-heading" id="shotsTitle">Select how many shots you want on your print</h2>
+      <div class="shot-grid" id="shotGrid">
+        <button class="shot-option" data-photocount="1" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/pic1-thumb.png" alt="1 shot frame layout" draggable="false"></span>
+          <b>80 THB &middot; 1 Shot</b>
+        </button>
+        <button class="shot-option" data-photocount="2" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/pic2-thumb.png" alt="2 shots frame layout" draggable="false"></span>
+          <b>80 THB &middot; 2 Shots</b>
+        </button>
+        <button class="shot-option" data-photocount="3" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/pic3-thumb.png" alt="3 shots frame layout" draggable="false"></span>
+          <b>80 THB &middot; 3 Shots</b>
+        </button>
+        <button class="shot-option" data-photocount="4" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/pic4-thumb.png" alt="4 shots frame layout" draggable="false"></span>
+          <b>80 THB &middot; 4 Shots</b>
+        </button>
       </div>
     </section>
 
-    
-    <section class="screen camera-screen" data-screen="camera" aria-labelledby="cameraTitle">
-      <div class="camera-heading"><p class="eyebrow">STEP 03 / 03</p><h2 id="cameraTitle">Make it<br><em>yours.</em></h2></div>
-      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="camera-crosshair" aria-hidden="true"></div><div class="countdown" id="countdown" aria-live="assertive"></div></div>
+    <!--
+      Not wired up yet: CLAUDE.md says no payment flow in this phase.
+      This screen only exists so the look is ready for later -- nothing
+      in app.js navigates to data-screen="payment" or listens on its buttons.
+    -->
+    <section class="screen brand-screen" data-screen="payment" aria-labelledby="paymentTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <button class="pill-button corner-button corner-button--top" id="paymentNextButton" type="button" disabled>Next</button>
+      <h2 class="script-heading" id="paymentTitle">Scan the QR code to complete your payment</h2>
+      <div class="qr-box" id="paymentQrBox" aria-hidden="true"></div>
+      <p class="script-heading payment-timer" id="paymentTimer">00:56</p>
+      <p class="script-heading payment-total" id="paymentTotal">Total: 0 THB</p>
+    </section>
+
+    <section class="screen camera-screen brand-screen" data-screen="camera" aria-labelledby="cameraTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="cameraTitle">Get Ready!</h2>
+      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="countdown" id="countdown" aria-live="assertive"></div></div>
       <p class="status-message" id="cameraMessage">Camera is ready.</p>
-      <button class="capture-button" id="captureButton" type="button"><span>TAKE PHOTO</span><i>↗</i></button>
+      <button class="pill-button tap-button" id="captureButton" type="button">Tap to Start</button>
     </section>
 
-    <section class="screen preview-screen" data-screen="preview" aria-labelledby="previewTitle">
-      <div class="screen-heading"><p class="eyebrow">YOUR KEEPSAKE</p><h2 id="previewTitle">Looks like<br><em>a memory.</em></h2></div>
+    <section class="screen preview-screen brand-screen" data-screen="preview" aria-labelledby="previewTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="previewTitle">Keep or Retake</h2>
       <div class="photo-preview-wrap"><img id="photoPreview" alt="Your composed photo preview"></div>
-      <div class="action-row"><button class="button button--quiet" id="retakeButton" type="button">RETAKE</button><button class="button button--solid" id="confirmButton" type="button">USE THIS PHOTO <span>↗</span></button></div>
+      <div class="action-row"><button class="pill-button" id="retakeButton" type="button">Try Again</button><button class="pill-button" id="confirmButton" type="button">Keep It</button></div>
+    </section>
+
+    <section class="screen printcopies-screen brand-screen" data-screen="printcopies" aria-labelledby="printCopiesTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="printCopiesTitle">Select Copies</h2>
+      <div class="photo-preview-wrap"><img id="printCopiesPreview" alt="Your composed photo"></div>
+      <div class="stepper" id="printCopiesStepper">
+        <button class="stepper-arrow" id="printCopiesMinus" type="button" aria-label="Decrease print copies">&minus;</button>
+        <span class="pill-button stepper-pill" id="printCopiesValue">1 Print</span>
+        <button class="stepper-arrow" id="printCopiesPlus" type="button" aria-label="Increase print copies">+</button>
+      </div>
+      <button class="pill-button corner-button corner-button--bottom" id="printCopiesConfirmButton" type="button">Confirm</button>
+    </section>
+
+    <!--
+      Rough first pass -- user hasn't finalized the design for this screen yet.
+      Also no Firebase project exists yet (per CLAUDE.md, photo upload needs a
+      real service account + Storage bucket), so #scanQrBox stays an empty
+      placeholder until that's wired up. Layout/wording here is expected to
+      change once the real design comes in.
+    -->
+    <section class="screen scan-screen brand-screen" data-screen="scan" aria-labelledby="scanTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="scanTitle">Scan for Photos</h2>
+      <div class="photo-preview-wrap"><img id="scanPreview" alt="Your composed photo"></div>
+      <p class="script-heading scan-label">Scan me</p>
+      <div class="qr-box" id="scanQrBox" aria-hidden="true"></div>
+      <button class="pill-button corner-button corner-button--bottom" id="scanContinueButton" type="button">Continue</button>
     </section>
 
     <section class="screen printing-screen" data-screen="printing" aria-labelledby="printingTitle">
@@ -94,7 +118,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
-  <script src="assets/vendor/swiper-bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

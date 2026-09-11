@@ -1,9 +1,10 @@
 const state = {
   screen: 'start',
-  quantity: null,
-  price: null,
+  photoCount: null,
   frame: null,
-  photo: null,
+  capturedPhotos: [],
+  composedPhoto: null,
+  printCopies: 1,
   cameraStream: null,
   countdownTimer: null,
   countdownRunning: false,
@@ -18,10 +19,6 @@ const preview = document.querySelector('#photoPreview');
 const countdown = document.querySelector('#countdown');
 const cameraMessage = document.querySelector('#cameraMessage');
 const toast = document.querySelector('#toast');
-const sessionLabel = document.querySelector('#sessionLabel');
-const paymentAmount = document.querySelector('#paymentAmount');
-const paymentStatus = document.querySelector('#paymentStatus');
-const paymentButton = document.querySelector('#mockPaymentButton');
 const printingScreen = document.querySelector('[data-screen="printing"]');
 const printingEyebrow = document.querySelector('#printingEyebrow');
 const printingTitle = document.querySelector('#printingTitle');
@@ -30,11 +27,51 @@ const printingStamp = document.querySelector('#printingStamp');
 const printingVideo = document.querySelector('#printingVideo');
 const printingProgress = document.querySelector('#printingProgress');
 const startScreen = document.querySelector('[data-screen="start"]');
-const prices = { 1: 50, 2: 100, 3: 150, 4: 200 };
+const printCopiesPreview = document.querySelector('#printCopiesPreview');
+const printCopiesValue = document.querySelector('#printCopiesValue');
+const printCopiesMinus = document.querySelector('#printCopiesMinus');
+const printCopiesPlus = document.querySelector('#printCopiesPlus');
+const scanPreview = document.querySelector('#scanPreview');
+const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
 let touchDistance = 0;
 let toastTimer = null;
 let startTransitionTimer = null;
+
+// Blank photo-slot rectangles measured directly from each frame PNG's printed
+// border lines (pixel coordinates in the frame's own native resolution).
+// These are first-pass measurements -- nudge them here if a print run shows
+// a photo sitting off-center inside its slot.
+const FRAME_LAYOUTS = {
+  1: {
+    src: 'assets/pic1.png', width: 945, height: 1772,
+    slots: [{ x: 108, y: 244, width: 753, height: 735 }]
+  },
+  2: {
+    src: 'assets/pic2.png', width: 889, height: 2000,
+    slots: [
+      { x: 136, y: 205, width: 638, height: 527 },
+      { x: 136, y: 747, width: 638, height: 527 }
+    ]
+  },
+  3: {
+    src: 'assets/pic3.png', width: 800, height: 2000,
+    slots: [
+      { x: 92, y: 205, width: 637, height: 367 },
+      { x: 92, y: 583, width: 637, height: 367 },
+      { x: 92, y: 960, width: 637, height: 367 }
+    ]
+  },
+  4: {
+    src: 'assets/pic4.png', width: 800, height: 2000,
+    slots: [
+      { x: 51, y: 238, width: 353, height: 510 },
+      { x: 417, y: 238, width: 353, height: 510 },
+      { x: 51, y: 766, width: 353, height: 510 },
+      { x: 417, y: 766, width: 353, height: 510 }
+    ]
+  }
+};
 
 async function apiRequest(endpoint, options = {}) {
   try {
@@ -76,9 +113,7 @@ function showScreen(screenName) {
   if (!screen) return;
   screens.forEach((item) => item.classList.toggle('screen--active', item === screen));
   state.screen = screenName;
-  sessionLabel.textContent = screenName === 'start' ? 'READY WHEN YOU ARE' : `${screenName.toUpperCase()} / RPB`;
   if (screenName !== 'camera') stopCamera();
-  if (screenName === 'frame') frameSwiper.update();
 }
 
 function startSession() {
@@ -89,7 +124,7 @@ function startSession() {
   startTransitionTimer = setTimeout(() => {
     startTransitionTimer = null;
     startScreen.classList.remove('is-leaving');
-    showScreen('quantity');
+    showScreen('shots');
   }, 450);
 }
 
@@ -111,7 +146,7 @@ async function initCamera() {
     state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
     video.srcObject = state.cameraStream;
     await video.play();
-    cameraMessage.textContent = 'Camera is ready.';
+    updateCameraMessage();
     return true;
   } catch (error) {
     state.cameraStream = null;
@@ -129,81 +164,22 @@ function stopCamera() {
   video.srcObject = null;
 }
 
-function selectQuantity(quantity) {
-  state.quantity = quantity;
-  state.price = prices[quantity];
-  document.querySelectorAll('.quantity-option').forEach((button) => button.classList.toggle('selected', Number(button.dataset.quantity) === quantity));
-  document.querySelector('#quantitySummary').textContent = `${quantity} ${quantity === 1 ? 'print' : 'prints'} / ฿${state.price}`;
-  syncServerSession({ quantity, state: 'SELECT_QUANTITY' });
-  setTimeout(() => showScreen('frame'), 180);
+function updateCameraMessage() {
+  cameraMessage.textContent = `Shot ${state.capturedPhotos.length + 1} of ${state.photoCount} — camera is ready.`;
 }
 
-const FRAMES = [
-  { src: 'assets/pic1.png', thumb: 'assets/thumbs/pic1-thumb.png', label: 'Frame 01' },
-  { src: 'assets/pic2.png', thumb: 'assets/thumbs/pic2-thumb.png', label: 'Frame 02' },
-  { src: 'assets/pic3.png', thumb: 'assets/thumbs/pic3-thumb.png', label: 'Frame 03' }
-];
-// Swiper's infinite loop needs enough real slides to work with, or it silently
-// disables looping when there are only a handful of wide, centered slides.
-// Repeating the same 3 frames a few times keeps looping seamless either direction.
-// The carousel shows lightweight thumbnails (not the full print-resolution PNGs)
-// so swiping stays smooth on the iPad; capturePhoto() still composites the
-// full-resolution frame from data-frame when the photo is actually printed.
-const FRAME_LOOP_REPEATS = 3;
-document.querySelector('#frameSwiperWrapper').innerHTML = Array.from({ length: FRAME_LOOP_REPEATS })
-  .flatMap(() => FRAMES)
-  .map(({ src, thumb, label }) => `<div class="swiper-slide frame-slide" data-frame="${src}"><span class="frame-slide-card"><img src="${thumb}" alt="${label}" draggable="false"></span><b class="frame-slide-label">${label}</b></div>`)
-  .join('');
-
-function trackActiveFrame(swiper) {
-  const activeSlide = swiper.slides[swiper.activeIndex];
-  if (activeSlide?.dataset.frame) state.frame = activeSlide.dataset.frame;
+function selectShotCount(photoCount) {
+  state.photoCount = photoCount;
+  state.frame = FRAME_LAYOUTS[photoCount].src;
+  state.capturedPhotos = [];
+  document.querySelectorAll('.shot-option').forEach((button) => button.classList.toggle('selected', Number(button.dataset.photocount) === photoCount));
 }
 
-const frameSwiper = new Swiper('#frameSwiper', {
-  effect: 'coverflow',
-  loop: true,
-  centeredSlides: true,
-  slidesPerView: 'auto',
-  grabCursor: true,
-  coverflowEffect: { rotate: 32, stretch: 0, depth: 160, modifier: 1, slideShadows: false },
-  on: { init: trackActiveFrame, slideChangeTransitionEnd: trackActiveFrame }
-});
-
-function confirmFrame() {
-  if (!state.frame) return notify('Swipe to choose a frame first.');
-  paymentAmount.textContent = `฿${state.price || 0}`;
-  paymentStatus.textContent = 'WAITING FOR PAYMENT';
-  paymentStatus.classList.remove('is-paid');
-  paymentButton.disabled = false;
-  syncServerSession({ frame: state.frame, state: 'WAIT_PAYMENT' });
-  showScreen('payment');
-}
-
-async function completeMockPayment() {
-  paymentButton.disabled = true;
-  paymentStatus.textContent = 'CHECKING PAYMENT...';
-  const sessionId = await ensureServerSession();
-  const result = sessionId ? await apiRequest(`/api/sessions/${sessionId}/payment/mock`, { method: 'POST', body: '{}' }) : null;
-  if (!result) {
-    paymentButton.disabled = false;
-    paymentStatus.textContent = 'PAYMENT FAILED';
-    return;
-  }
-  paymentStatus.textContent = 'PAYMENT SUCCESS';
-  paymentStatus.classList.add('is-paid');
-  setTimeout(() => { showScreen('camera'); initCamera(); }, 500);
-}
-
-function showPrintingComplete() {
-  printingVideo.hidden = true;
-  printingScreen.classList.remove('is-video-playing');
-  printingScreen.classList.add('is-done');
-  printingEyebrow.textContent = 'MOCK PRINTER / DONE';
-  printingTitle.innerHTML = 'Your photo is<br><em>ready.</em>';
-  printingCopy.textContent = 'Mock print completed successfully. The real printer can replace this service later.';
-  printingStamp.innerHTML = 'RPB<br>OK';
-  showScreen('thankyou');
+function confirmShotSelection() {
+  if (!state.photoCount) return notify('Choose how many shots first.');
+  syncServerSession({ photoCount: state.photoCount, frame: state.frame, state: 'SELECT_SHOTS' });
+  showScreen('camera');
+  initCamera();
 }
 
 function clearCountdown() {
@@ -222,7 +198,7 @@ function startCountdown() {
     countdown.textContent = moments[index] || '';
     if (index === moments.length) {
       clearCountdown();
-      capturePhoto();
+      capturePhotoStep();
       return;
     }
     index += 1;
@@ -248,71 +224,91 @@ function drawCover(source, targetWidth, targetHeight) {
   return { sourceX, sourceY, sourceWidth, sourceHeight };
 }
 
-function drawFrameOverlay(context, width, height) {
-  const frameNumber = state.frame?.match(/frame(\d)/)?.[1] || '1';
-  const palettes = { 1: ['#e85d46', '#f0d9bd'], 2: ['#173f52', '#a9c3c4'], 3: ['#e5a343', '#f4d08d'] };
-  const [primary, secondary] = palettes[frameNumber];
+function captureSlotPhoto(slot) {
+  const slotCanvas = document.createElement('canvas');
+  slotCanvas.width = slot.width;
+  slotCanvas.height = slot.height;
+  const context = slotCanvas.getContext('2d');
+  const crop = drawCover(video, slot.width, slot.height);
   context.save();
-  context.strokeStyle = primary;
-  context.lineWidth = Math.max(width * .035, 24);
-  context.strokeRect(context.lineWidth / 2, context.lineWidth / 2, width - context.lineWidth, height - context.lineWidth);
-  context.strokeStyle = secondary;
-  context.lineWidth = Math.max(width * .008, 5);
-  context.strokeRect(width * .075, height * .075, width * .85, height * .85);
-  context.fillStyle = primary;
-  context.font = `600 ${Math.max(width * .026, 24)}px monospace`;
-  context.fillText(`RPB / ${frameNumber.padStart(2, '0')}`, width * .09, height * .94);
+  context.translate(slot.width, 0);
+  context.scale(-1, 1);
+  context.drawImage(video, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, slot.width, slot.height);
   context.restore();
+  return slotCanvas;
 }
 
-function loadFrameImage() {
+function loadFrameImage(src) {
   return new Promise((resolve, reject) => {
-    if (!state.frame) {
-      reject(new Error('No frame selected'));
-      return;
-    }
     const frameImage = new Image();
     frameImage.onload = () => resolve(frameImage);
     frameImage.onerror = () => reject(new Error('Frame could not be loaded'));
-    frameImage.src = state.frame;
+    frameImage.src = src;
   });
 }
 
-async function capturePhoto() {
+async function composeFinalPhoto() {
+  const layout = FRAME_LAYOUTS[state.photoCount];
+  canvas.width = layout.width;
+  canvas.height = layout.height;
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, layout.width, layout.height);
+  state.capturedPhotos.forEach((slotCanvas, index) => {
+    const slot = layout.slots[index];
+    context.drawImage(slotCanvas, slot.x, slot.y, slot.width, slot.height);
+  });
+  try {
+    const frameImage = await loadFrameImage(layout.src);
+    context.drawImage(frameImage, 0, 0, layout.width, layout.height);
+  } catch (error) {
+    notify('Frame asset unavailable.');
+  }
+  state.composedPhoto = canvas.toDataURL('image/png');
+  preview.src = state.composedPhoto;
+  previewWraps.forEach((wrap) => { wrap.style.aspectRatio = `${layout.width} / ${layout.height}`; });
+  if (state.serverSessionId) {
+    apiRequest(`/api/sessions/${state.serverSessionId}/photo`, { method: 'POST', body: JSON.stringify({ photo: state.composedPhoto }) });
+  }
+}
+
+async function capturePhotoStep() {
   if (!state.cameraStream || !video.videoWidth) {
     notify('The camera is not ready yet.');
     return;
   }
   try {
-    const width = 945;
-    const height = 1772;
-    const photoWindow = { x: 141, y: 257, width: 663, height: 666 };
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    const crop = drawCover(video, photoWindow.width, photoWindow.height);
-    context.save();
-    context.translate(width, 0);
-    context.scale(-1, 1);
-    context.drawImage(video, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, width - photoWindow.x - photoWindow.width, photoWindow.y, photoWindow.width, photoWindow.height);
-    context.restore();
-    try {
-      const frameImage = await loadFrameImage();
-      context.drawImage(frameImage, 0, 0, width, height);
-    } catch (error) {
-      drawFrameOverlay(context, width, height);
-      notify('Frame asset unavailable. Using the built-in frame.');
+    const layout = FRAME_LAYOUTS[state.photoCount];
+    const slot = layout.slots[state.capturedPhotos.length];
+    state.capturedPhotos.push(captureSlotPhoto(slot));
+    if (state.capturedPhotos.length < state.photoCount) {
+      updateCameraMessage();
+      setTimeout(startCountdown, 700);
+      return;
     }
-    state.photo = canvas.toDataURL('image/png');
-    preview.src = state.photo;
-    if (state.serverSessionId) {
-      apiRequest(`/api/sessions/${state.serverSessionId}/photo`, { method: 'POST', body: JSON.stringify({ photo: state.photo }) });
-    }
+    await composeFinalPhoto();
     stopCamera();
     showScreen('preview');
   } catch (error) {
     notify('We could not capture the photo. Please try again.');
   }
+}
+
+function showPrintingComplete() {
+  printingVideo.hidden = true;
+  printingScreen.classList.remove('is-video-playing');
+  printingScreen.classList.add('is-done');
+  printingEyebrow.textContent = 'MOCK PRINTER / DONE';
+  printingTitle.innerHTML = 'Your photo is<br><em>ready.</em>';
+  printingCopy.textContent = 'Mock print completed successfully. The real printer can replace this service later.';
+  printingStamp.innerHTML = 'RPB<br>OK';
+  scanPreview.src = state.composedPhoto;
+  showScreen('scan');
+}
+
+function updatePrintCopiesUI() {
+  printCopiesValue.textContent = `${state.printCopies} Print${state.printCopies > 1 ? 's' : ''}`;
+  printCopiesMinus.disabled = state.printCopies <= 1;
+  printCopiesPlus.disabled = state.printCopies >= 4;
 }
 
 function resetSession() {
@@ -321,14 +317,13 @@ function resetSession() {
   printingVideo.pause();
   printingVideo.currentTime = 0;
   state.screen = 'start';
-  state.quantity = null;
-  state.price = null;
+  state.photoCount = null;
   state.frame = null;
-  state.photo = null;
+  state.capturedPhotos = [];
+  state.composedPhoto = null;
+  state.printCopies = 1;
   state.serverSessionId = null;
   state.serverSessionPromise = null;
-  frameSwiper.slideToLoop(0, 0, false);
-  trackActiveFrame(frameSwiper);
   printingScreen.classList.remove('is-done');
   printingScreen.classList.remove('is-video-playing');
   printingEyebrow.textContent = 'MOCK PRINTER';
@@ -338,8 +333,11 @@ function resetSession() {
   canvas.width = 0;
   canvas.height = 0;
   preview.removeAttribute('src');
+  printCopiesPreview.removeAttribute('src');
+  scanPreview.removeAttribute('src');
+  previewWraps.forEach((wrap) => { wrap.style.aspectRatio = ''; });
+  updatePrintCopiesUI();
   document.querySelectorAll('.selected').forEach((item) => item.classList.remove('selected'));
-  document.querySelector('#quantitySummary').textContent = 'Choose a quantity to continue';
   showScreen('start');
 }
 
@@ -373,17 +371,37 @@ startScreen.addEventListener('pointercancel', () => {
   startScreen.style.transform = '';
 }, { passive: true });
 startScreen.addEventListener('click', startSession);
-document.querySelector('#quantityGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-quantity]'); if (option) selectQuantity(Number(option.dataset.quantity)); });
-document.querySelector('#frameConfirmButton').addEventListener('click', confirmFrame);
-paymentButton.addEventListener('click', completeMockPayment);
+document.querySelector('#shotGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-photocount]'); if (option) selectShotCount(Number(option.dataset.photocount)); });
+document.querySelector('#shotsNextButton').addEventListener('click', confirmShotSelection);
 document.querySelector('#captureButton').addEventListener('click', startCountdown);
-document.querySelector('#retakeButton').addEventListener('click', () => { showScreen('camera'); initCamera(); });
-document.querySelector('#confirmButton').addEventListener('click', async () => {
-  if (!state.photo) return notify('There is no captured photo to confirm.');
-  const transactionData = { quantity: state.quantity, price: state.price, frame: state.frame, photo: state.photo };
+document.querySelector('#retakeButton').addEventListener('click', () => {
+  state.capturedPhotos = [];
+  showScreen('camera');
+  initCamera();
+});
+document.querySelector('#confirmButton').addEventListener('click', () => {
+  if (!state.composedPhoto) return notify('There is no captured photo to confirm.');
+  state.printCopies = 1;
+  updatePrintCopiesUI();
+  printCopiesPreview.src = state.composedPhoto;
+  syncServerSession({ state: 'SELECT_PRINT_COPIES' });
+  showScreen('printcopies');
+});
+printCopiesMinus.addEventListener('click', () => {
+  if (state.printCopies <= 1) return;
+  state.printCopies -= 1;
+  updatePrintCopiesUI();
+});
+printCopiesPlus.addEventListener('click', () => {
+  if (state.printCopies >= 4) return;
+  state.printCopies += 1;
+  updatePrintCopiesUI();
+});
+document.querySelector('#printCopiesConfirmButton').addEventListener('click', async () => {
+  const transactionData = { photoCount: state.photoCount, frame: state.frame, printCopies: state.printCopies, photo: state.composedPhoto };
   console.info('Prototype transaction ready:', transactionData);
   if (state.serverSessionId) {
-    const result = await apiRequest(`/api/sessions/${state.serverSessionId}/print`, { method: 'POST', body: '{}' });
+    const result = await apiRequest(`/api/sessions/${state.serverSessionId}/print`, { method: 'POST', body: JSON.stringify({ printCopies: state.printCopies }) });
     if (!result) return;
   }
   showScreen('printing');
@@ -405,6 +423,7 @@ printingVideo.addEventListener('error', () => {
   printingProgress.hidden = false;
   setTimeout(showPrintingComplete, 3200);
 });
+document.querySelector('#scanContinueButton').addEventListener('click', () => showScreen('thankyou'));
 document.querySelector('#resetButton').addEventListener('click', resetSession);
 document.querySelector('#thankyouResetButton').addEventListener('click', resetSession);
 window.addEventListener('pagehide', () => { clearCountdown(); stopCamera(); });
