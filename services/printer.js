@@ -56,9 +56,10 @@ async function dataUrlToRaster(dataUrl) {
     .resize({ width: PRINT_WIDTH_DOTS })
     .grayscale()
     .median(3)
-    .clahe({ width: 24, height: 24, maxSlope: 2 })
-    .linear(1.08, 22)
-    .sharpen({ sigma: 1.4, m1: 1.5, m2: 2.5 })
+    .clahe({ width: 32, height: 32, maxSlope: 1 })
+    .gamma(1.6)
+    .linear(1.0, 12)
+    .sharpen({ sigma: 1.2, m1: 1.2, m2: 2.0 })
     .raw()
     .toBuffer({ resolveWithObject: true });
 

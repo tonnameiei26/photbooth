@@ -15,28 +15,28 @@
       <img class="start-hero" src="assets/first.png" alt="Snaplicious Studio - Snap Your Moments - touch the screen to start">
     </section>
 
-    <section class="screen brand-screen" data-screen="shots" aria-labelledby="shotsTitle">
-      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
-      <button class="pill-button corner-button corner-button--top" id="shotsNextButton" type="button">Next</button>
+    <section class="screen brand-screen shots-screen" data-screen="shots" aria-labelledby="shotsTitle">
+      <img class="brand-logo" src="assets/logo.png" alt="Snaplicious Studio">
       <h2 class="script-heading" id="shotsTitle">Select how many shots you want on your print</h2>
       <div class="shot-grid" id="shotGrid">
         <button class="shot-option" data-photocount="1" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/pic1-thumb.png" alt="1 shot frame layout" draggable="false"></span>
+          <span class="shot-option-thumb"><img src="assets/thumbs/fi1-thumb.jpg" alt="1 shot frame layout" draggable="false"></span>
           <b>80 THB &middot; 1 Shot</b>
         </button>
         <button class="shot-option" data-photocount="2" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/pic2-thumb.png" alt="2 shots frame layout" draggable="false"></span>
+          <span class="shot-option-thumb"><img src="assets/thumbs/fi2-thumb.jpg" alt="2 shots frame layout" draggable="false"></span>
           <b>80 THB &middot; 2 Shots</b>
         </button>
         <button class="shot-option" data-photocount="3" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/pic3-thumb.png" alt="3 shots frame layout" draggable="false"></span>
+          <span class="shot-option-thumb"><img src="assets/thumbs/fi3-thumb.jpg" alt="3 shots frame layout" draggable="false"></span>
           <b>80 THB &middot; 3 Shots</b>
         </button>
         <button class="shot-option" data-photocount="4" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/pic4-thumb.png" alt="4 shots frame layout" draggable="false"></span>
+          <span class="shot-option-thumb"><img src="assets/thumbs/fi4-thumb.jpg" alt="4 shots frame layout" draggable="false"></span>
           <b>80 THB &middot; 4 Shots</b>
         </button>
       </div>
+      <button class="pill-button corner-button corner-button--bottom" id="shotsNextButton" type="button">Next</button>
     </section>
 
     <!--
@@ -46,7 +46,7 @@
     -->
     <section class="screen brand-screen" data-screen="payment" aria-labelledby="paymentTitle">
       <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
-      <button class="pill-button corner-button corner-button--top" id="paymentNextButton" type="button" disabled>Next</button>
+      <button class="pill-button corner-button corner-button--bottom" id="paymentNextButton" type="button" disabled>Next</button>
       <h2 class="script-heading" id="paymentTitle">Scan the QR code to complete your payment</h2>
       <div class="qr-box" id="paymentQrBox" aria-hidden="true"></div>
       <p class="script-heading payment-timer" id="paymentTimer">00:56</p>

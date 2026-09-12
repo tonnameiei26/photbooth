@@ -15,9 +15,9 @@ h1 { font-size: clamp(4.2rem, 11vw, 10rem); } h2 { font-size: clamp(3rem, 8vw, 7
 
 /* Snaplicious brand screens (start / shots / payment / camera) */
 .brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #fff; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
-.brand-logo { display: block; width: clamp(14rem, 28vw, 20rem); height: auto; }
+.brand-logo { display: block; width: clamp(25rem, 38vh, 43rem); height: auto; }
 .brand-logo--compact { width: clamp(11rem, 24vw, 15rem); margin-bottom: -.25rem; }
-.script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.15; max-width: 40rem; }
+.script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.6rem, 4vh, 2.6rem); line-height: 1.15; max-width: 40rem; }
 .pill-button { display: inline-flex; align-items: center; justify-content: center; min-height: 3.2rem; padding: .6rem 2rem; border: 1px solid #1a1a1a; border-radius: 999px; background: #fff; font-family: var(--script); font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .pill-button:disabled { opacity: .35; }
 .corner-button { position: absolute; right: clamp(1.5rem, 4vw, 3rem); min-height: 2.6rem; padding: .4rem 1.6rem; }
@@ -31,10 +31,11 @@ h1 { font-size: clamp(4.2rem, 11vw, 10rem); } h2 { font-size: clamp(3rem, 8vw, 7
 .start-hero-screen { padding: 0; }
 .start-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
-.shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem clamp(1.5rem, 4vw, 3rem); width: 100%; max-width: 40rem; }
+.shots-screen { height: 100dvh; overflow: hidden; justify-content: flex-start; }
+.shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: center; align-items: start; gap: 2rem clamp(1.5rem, 4vw, 3rem); width: 100%; max-width: 40rem; }
 .shot-option { display: flex; flex-direction: column; align-items: center; gap: .9rem; padding: 0; border: 0; background: transparent; text-align: center; }
-.shot-option-thumb { display: block; width: 100%; aspect-ratio: 4 / 5; overflow: hidden; border: 1px solid #1a1a1a; border-radius: .4rem; background: #fff; transition: border-color .2s, transform .2s; }
-.shot-option-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.shot-option-thumb { display: block; width: clamp(6rem, 12vh, 10rem); height: auto; overflow: hidden; border: 1px solid #1a1a1a; border-radius: .4rem; background: #fff; transition: border-color .2s, transform .2s; }
+.shot-option-thumb img { display: block; width: 100%; height: auto; object-fit: contain; }
 .shot-option.selected .shot-option-thumb { border-color: var(--logo-accent); border-width: 2px; transform: translateY(-.3rem); }
 .shot-option b { font-family: var(--script); font-weight: 600; font-size: clamp(1.2rem, 2.8vw, 1.5rem); }
 .selection-summary, .status-message { min-height: 1rem; margin: 1.4rem 0 0; color: var(--blue); font-size: .67rem; }
