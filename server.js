@@ -1,3 +1,4 @@
+require('dotenv').config({ quiet: true });
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -5,6 +6,8 @@ const http = require('http');
 const https = require('https');
 const express = require('express');
 const printer = require('./services/printer');
+const storage = require('./services/storage');
+const db = require('./db/database');
 
 const PORT = Number(process.env.PORT) || 3443;
 const HTTP_DEV_PORT = Number(process.env.HTTP_DEV_PORT) || 3000;
@@ -18,13 +21,15 @@ const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SEL
 
 function createSession() {
   const now = new Date().toISOString();
-  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', createdAt: now, updatedAt: now };
+  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, createdAt: now, updatedAt: now };
   sessions.set(session.id, session);
+  db.saveSession(session);
   return session;
 }
 
 function updateSession(session, changes) {
   Object.assign(session, changes, { updatedAt: new Date().toISOString() });
+  db.saveSession(session);
   return session;
 }
 
@@ -87,11 +92,15 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
     printCopies = payload.printCopies;
   }
   if (!session.photo) return response.status(409).json({ error: 'A photo must be uploaded before printing' });
+  if (session.print === 'PROCESSING') return response.status(409).json({ error: 'Print already in progress for this session' });
   if (!printer.isReady()) return response.status(503).json({ error: 'Printer is not connected' });
-  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies });
+  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING' });
   printer.printPhoto(session.photo, printCopies)
     .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
     .catch((error) => updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message }));
+  storage.uploadAndGenerateQr(session.photo, session.id)
+    .then(({ photoUrl, qrCode }) => updateSession(session, { uploadStatus: 'DONE', photoUrl, qrCode }))
+    .catch((error) => updateSession(session, { uploadStatus: 'FAILED', uploadError: error.message }));
   response.status(202).json({ session });
 });
 

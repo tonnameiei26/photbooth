@@ -59,7 +59,7 @@ async function dataUrlToRaster(dataUrl) {
     .clahe({ width: 32, height: 32, maxSlope: 1 })
     .gamma(1.6)
     .linear(1.0, 12)
-    .sharpen({ sigma: 1.2, m1: 1.2, m2: 2.0 })
+    .sharpen({ sigma: 1.2, m1: 1.8, m2: 3.5 })
     .raw()
     .toBuffer({ resolveWithObject: true });
 
