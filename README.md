@@ -2,6 +2,26 @@
 
 See `CLAUDE.md` for the full project brief (hardware, phase scope, dev workflow) and `API.md` for the local backend API.
 
+## Status
+
+**Working:**
+- HTTPS serving via Express + mkcert so `getUserMedia()` works on the iPad (`server.js`)
+- Full booth flow: shot-count select → frame select → camera → preview/retake → print-copies select → printing → scan/QR → thank you
+- Multi-shot capture composited onto a frame layout via canvas (`app.js`)
+- Camera zoom (crops in ~35%, matched between live preview and the actual captured photo) and a white flash animation between shots
+- Real USB thermal printing (Xprinter XP-C300H) with Floyd-Steinberg dithering, tuned brightness/sharpness (`services/printer.js`)
+- Duplicate-print guard: the print button disables itself and the server rejects a second `/print` call while one is already in progress, so a double-tap can't print extra copies
+- Color photo upload to Cloudinary + QR code generation so guests can download their photo (`services/storage.js`); QR appears on the "scan" screen once the upload finishes
+
+**Not done yet (see `CLAUDE.md` for why each matters):**
+- Session state is in-memory only (a `Map` in `server.js`) — not persisted to SQLite yet, so a server restart or power loss loses any in-progress session
+- No automatic deletion of uploaded Cloudinary photos after a retention window (7-30 days) — photos stay on Cloudinary indefinitely until removed by hand from the Media Library
+- Printer readiness check is just "is the USB device file present" — no real paper-out or cover-open detection yet
+- No LINE Messaging API notifications for printer errors/paper-out
+- No PM2 setup to auto-start the server on Pi boot
+- Admin mode (PIN, sales dashboard) not started — deferred on purpose
+- Payment/QR-to-pay intentionally not built — out of scope for this phase per `CLAUDE.md`
+
 ## Target display
 
 The primary and only display this UI is being hand-tuned for right now is:
@@ -21,7 +41,10 @@ If a future screen redesign changes what's stacked vertically on any screen, re-
 
 ## Running locally
 
+Copy `.env.example` to `.env` and fill in your Cloudinary credentials (Dashboard → look for "API Keys" / "Product Environment Credentials") before starting the server, or photo uploads/QR codes will fail silently while printing still works fine:
+
 ```sh
+cp .env.example .env
 npm start
 ```
 
