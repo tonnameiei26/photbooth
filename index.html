@@ -56,7 +56,7 @@
     <section class="screen camera-screen brand-screen" data-screen="camera" aria-labelledby="cameraTitle">
       <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
       <h2 class="script-heading" id="cameraTitle">Get Ready!</h2>
-      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="countdown" id="countdown" aria-live="assertive"></div></div>
+      <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="countdown" id="countdown" aria-live="assertive"></div><div class="camera-flash" id="cameraFlash"></div></div>
       <p class="status-message" id="cameraMessage">Camera is ready.</p>
       <button class="pill-button tap-button" id="captureButton" type="button">Tap to Start</button>
     </section>
@@ -96,23 +96,19 @@
       <button class="pill-button corner-button corner-button--bottom" id="scanContinueButton" type="button">Continue</button>
     </section>
 
-    <section class="screen printing-screen" data-screen="printing" aria-labelledby="printingTitle">
-      <div class="printing-stamp" id="printingStamp" aria-hidden="true">RPB<br>...</div>
-      <p class="eyebrow" id="printingEyebrow">MOCK PRINTER</p><h2 id="printingTitle">Printing your<br><em>keepsake.</em></h2>
-      <p class="printing-copy" id="printingCopy">Sending your photo to the simulated printer...</p>
-      <video class="printing-video" id="printingVideo" muted playsinline preload="auto" aria-label="Printing animation">
-        <source src="assets/kitchen.mov" type="video/quicktime">
-      </video>
+    <section class="screen printing-screen brand-screen" data-screen="printing" aria-labelledby="printingTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="printingTitle">Printing your keepsake...</h2>
+      <p class="status-message">Sending your photo to the printer...</p>
       <div class="printing-progress" id="printingProgress"><span></span></div>
-      <button class="button button--solid" id="resetButton" type="button">START A NEW SESSION <span>↗</span></button>
+      <button class="pill-button corner-button corner-button--bottom" id="resetButton" type="button">Start Over</button>
     </section>
 
-    <section class="screen thankyou-screen" data-screen="thankyou" aria-labelledby="thankyouTitle">
-      <div class="thankyou-mark" aria-hidden="true">RPB<br>OK</div>
-      <p class="eyebrow">PRINT COMPLETE</p>
-      <h2 id="thankyouTitle">Thank you<br><em>for stopping by.</em></h2>
-      <p class="thankyou-copy">Your keepsake is ready. We hope it keeps a little moment close.</p>
-      <button class="button button--solid" id="thankyouResetButton" type="button">START A NEW SESSION <span>↗</span></button>
+    <section class="screen thankyou-screen brand-screen" data-screen="thankyou" aria-labelledby="thankyouTitle">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+      <h2 class="script-heading" id="thankyouTitle">Thank you for stopping by!</h2>
+      <p class="status-message">Your keepsake is ready. We hope it keeps a little moment close.</p>
+      <button class="pill-button" id="thankyouResetButton" type="button">Start a New Session</button>
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

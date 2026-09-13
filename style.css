@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-:root { --paper: #f5efe6; --ink: #172126; --blue: #173f52; --red: #e85d46; --line: rgba(23,33,38,.2); --serif: 'Fraunces', Georgia, serif; --mono: 'DM Mono', monospace; --script: 'Caveat', cursive; --logo-accent: #a5241d; }
+:root { --paper: #f5efe6; --ink: #172126; --blue: #173f52; --line: rgba(23,33,38,.2); --mono: 'DM Mono', monospace; --script: 'Caveat', cursive; --logo-accent: #a5241d; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: #d9d0c4; color: var(--ink); }
 body { font-family: var(--mono); letter-spacing: 0; touch-action: pan-y; overscroll-behavior: none; }
@@ -8,11 +8,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .booth-shell { position: relative; width: 100%; min-height: 100svh; min-height: 100dvh; overflow: hidden; background: var(--paper); }
 .screen { display: none; min-height: 100svh; min-height: 100dvh; padding: clamp(6rem, 12vh, 9rem) clamp(1.25rem, 9vw, 9rem) clamp(2rem, 5vw, 4rem); position: relative; isolation: isolate; }
 .screen.screen--active { display: flex; }
-.eyebrow { margin: 0 0 1.1rem; font-size: .65rem; letter-spacing: .16em; font-weight: 500; }
-h1, h2 { margin: 0; font-family: var(--serif); font-weight: 500; line-height: .9; letter-spacing: 0; }
-h1 { font-size: clamp(4.2rem, 11vw, 10rem); } h2 { font-size: clamp(3rem, 8vw, 7rem); } em { color: var(--red); font-style: italic; }
-.screen-heading { margin-bottom: clamp(2rem, 6vh, 4rem); }
-
 /* Snaplicious brand screens (start / shots / payment / camera) */
 .brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #fff; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
 .brand-logo { display: block; width: clamp(25rem, 38vh, 43rem); height: auto; }
@@ -40,64 +35,51 @@ h1 { font-size: clamp(4.2rem, 11vw, 10rem); } h2 { font-size: clamp(3rem, 8vw, 7
 .shot-option b { font-family: var(--script); font-weight: 600; font-size: clamp(1.2rem, 2.8vw, 1.5rem); }
 .selection-summary, .status-message { min-height: 1rem; margin: 1.4rem 0 0; color: var(--blue); font-size: .67rem; }
 
-.qr-box { width: min(70vw, 24rem); aspect-ratio: 1; border: 1px solid #1a1a1a; background: #fff; }
+.qr-box { width: min(70vw, 24rem); aspect-ratio: 1; border: 1px solid #1a1a1a; background: #fff; display: grid; place-items: center; padding: .5rem; text-align: center; color: #1a1a1a; font-size: .75rem; }
+.qr-box img { width: 100%; height: 100%; object-fit: contain; }
 .payment-timer, .payment-total { color: #1a1a1a; }
 .stepper { display: flex; align-items: center; gap: 1.5rem; }
 .stepper-arrow { font-family: var(--script); font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1; background: none; padding: .25rem .5rem; }
 .stepper-arrow:disabled { opacity: .3; cursor: default; }
 .stepper-pill { min-width: 8rem; }
 .camera-stage { position: relative; width: min(100%, 26rem); aspect-ratio: 4 / 5; overflow: hidden; background: #c7d0d6; border: 1px solid #1a1a1a; border-radius: .4rem; }
-#webcamVideo { width: 100%; height: 100%; display: block; object-fit: cover; transform: scaleX(-1); }
+#webcamVideo { width: 100%; height: 100%; display: block; object-fit: cover; transform: scaleX(-1) scale(var(--camera-zoom, 1)); filter: brightness(var(--camera-brightness, 1)); }
 .countdown { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-family: var(--script); font-size: clamp(5rem, 14vw, 8rem); text-shadow: 0 2px 20px rgba(0,0,0,.4); }
-.button span { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border: 1px solid currentColor; border-radius: 50%; font-style: normal; font-size: 1.1rem; }
-.printing-screen { flex-direction: column; align-items: center; text-align: center; }
+.camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 450ms ease-out; }
+.camera-flash.is-active { opacity: 1; transition: none; }
 .photo-preview-wrap { width: auto; height: min(60vh, 34rem); max-width: 78vw; aspect-ratio: 945 / 1772; border-radius: .4rem; overflow: hidden; border: 1px solid #1a1a1a; background: #fff; }
 #photoPreview, #printCopiesPreview, #scanPreview { display: block; width: 100%; height: 100%; object-fit: contain; }
 .action-row { display: flex; justify-content: center; gap: .9rem; width: 100%; max-width: 28rem; }
 .scan-label { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
-.action-row .button { flex: 1; justify-content: center; min-width: clamp(9rem, 32vw, 13rem); }
-.button { display: inline-flex; align-items: center; gap: .8rem; min-height: 3.3rem; padding: .6rem 1rem .6rem 1.2rem; font-size: .65rem; letter-spacing: .1em; }
-.button--quiet { background: transparent; border: 1px solid var(--line); }
-.button--solid { background: var(--red); color: var(--paper); }
-.button--solid span { width: 1.8rem; height: 1.8rem; }
-.printing-screen { justify-content: center; } .printing-stamp { display: grid; place-items: center; width: 5rem; height: 5rem; margin-bottom: 2rem; border: 1px solid var(--red); color: var(--red); transform: rotate(-8deg); font-size: .7rem; line-height: 1.2; } .printing-copy { margin: 2rem 0; color: rgba(23,33,38,.7); font-size: .7rem; line-height: 1.8; } .printing-video { display: block; width: min(42rem, 80vw); max-height: 38vh; margin-bottom: 2rem; object-fit: contain; background: var(--ink); } .printing-screen.is-video-playing { padding: 0; background: #000; } .printing-screen.is-video-playing .printing-video { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; max-height: none; margin: 0; object-fit: cover; } .printing-screen.is-video-playing > :not(.printing-video) { z-index: 1; visibility: hidden; } .printing-progress { width: min(22rem, 80vw); height: .35rem; margin-bottom: 2rem; background: rgba(23,33,38,.12); overflow: hidden; } .printing-progress span { display: block; width: 15%; height: 100%; background: var(--red); animation: printing 3s linear forwards; } .printing-screen.is-done .printing-stamp { color: var(--blue); border-color: var(--blue); } .printing-screen.is-done .printing-progress span { width: 100%; animation: none; background: var(--blue); } @keyframes printing { to { width: 100%; } }
-.thankyou-screen { flex-direction: column; justify-content: center; align-items: center; gap: 0; text-align: center; }
-.thankyou-mark { display: grid; place-items: center; width: 5rem; height: 5rem; margin-bottom: 2rem; border: 1px solid var(--blue); color: var(--blue); transform: rotate(-8deg); font-size: .7rem; line-height: 1.2; }
-.thankyou-copy { max-width: 26rem; margin: 2rem 0; color: rgba(23,33,38,.7); font-size: .7rem; line-height: 1.8; }
+.printing-progress { width: min(22rem, 80vw); height: .35rem; background: rgba(23,33,38,.12); overflow: hidden; }
+.printing-progress span { display: block; width: 15%; height: 100%; background: var(--logo-accent); animation: printing 3s linear forwards; }
+@keyframes printing { to { width: 100%; } }
 .screen[data-screen='start'] { touch-action: none; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
 .screen[data-screen='start'].is-dragging { transition: none; }
 .screen[data-screen='start'].is-leaving { transform: translateY(-100%); transition-duration: .45s; }
 .toast { position: fixed; z-index: 10; left: 50%; bottom: 1.5rem; max-width: calc(100% - 2rem); padding: .8rem 1rem; background: var(--ink); color: var(--paper); font-size: .65rem; transform: translate(-50%, 180%); transition: transform .25s; } .toast.visible { transform: translate(-50%, 0); }
-@media (max-width: 700px) { h1 { font-size: clamp(3.5rem, 17vw, 6rem); } .shot-grid { max-width: 22rem; } .photo-preview-wrap { height: min(48vh, 28rem); max-width: 82vw; } }
+@media (max-width: 700px) { .shot-grid { max-width: 22rem; } .photo-preview-wrap { height: min(48vh, 28rem); max-width: 82vw; } }
 @media (min-width: 701px) and (max-width: 1100px) {
 	.screen { padding-inline: clamp(2rem, 6vw, 4.5rem); }
-	.eyebrow { font-size: .78rem; }
-	.selection-summary, .status-message, .printing-copy { font-size: .82rem; }
-	.button { font-size: .78rem; }
-	.button { min-height: 3.8rem; padding-inline: 1.35rem; }
-	h1 { font-size: clamp(4.5rem, 10vw, 7rem); }
-	h2 { font-size: clamp(3.5rem, 7vw, 5.5rem); }
+	.selection-summary, .status-message { font-size: .82rem; }
 	.camera-stage { width: min(100%, 30rem); }
 }
 @media (max-width: 700px) {
 	.screen { padding: 5.5rem 1.25rem 1.5rem; }
 	.shot-grid { gap: 1.5rem 1rem; }
 	.camera-stage { width: min(100%, 22rem); max-height: 58svh; }
-	.button { min-height: 3.5rem; }
 }
 @media (pointer: coarse) and (min-width: 701px) and (max-width: 1366px) {
 	html, body { width: 100%; height: 100%; overflow: hidden; }
 	.booth-shell { width: 100vw; height: 100dvh; min-height: 0; }
 	.screen { width: 100vw; height: 100dvh; min-height: 0; overflow: hidden; }
-	.button, .shot-option, .stepper-button, .pill-button { user-select: none; }
-	.shot-option, .button, .stepper-button, .pill-button { min-height: 60px; }
+	.shot-option, .stepper-button, .pill-button { user-select: none; min-height: 60px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (orientation: portrait) and (pointer: coarse) and (min-width: 701px) {
 	.screen { padding-inline: clamp(2rem, 7vw, 5rem); }
 	.screen[data-screen='shots'] .shot-grid { gap: 2rem; }
 	.camera-stage { width: min(72vw, 30rem); }
-	.printing-video { width: min(72vw, 40rem); max-height: 36vh; }
 }
 /* Primary target device: iPad 11" portrait, 820x1180 CSS px (also covers the
    810x1080 10th-gen and 834x1194 Pro 11 logical sizes in the same class).
@@ -111,7 +93,6 @@ h1 { font-size: clamp(4.2rem, 11vw, 10rem); } h2 { font-size: clamp(3rem, 8vw, 7
 	.screen[data-screen='shots'] .shot-grid { max-width: 34rem; gap: 1.25rem clamp(1.25rem, 3.5vw, 2.25rem); }
 	.camera-stage { width: min(68vw, 32rem); }
 	.qr-box { width: min(60vw, 28rem); }
-	.printing-screen, .thankyou-screen { padding-block: clamp(2.5rem, 6vh, 4rem); }
 	/* scan-screen stacks a photo AND a QR box in one column -- both need to
 	   shrink here or the two combined blow past the fixed 1180px height. */
 	.scan-screen .photo-preview-wrap { height: min(30vh, 18rem); }

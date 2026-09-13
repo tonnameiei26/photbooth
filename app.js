@@ -1,3 +1,8 @@
+const CAMERA_ZOOM = 1.35;
+const CAMERA_BRIGHTNESS = 1;
+document.documentElement.style.setProperty('--camera-zoom', CAMERA_ZOOM);
+document.documentElement.style.setProperty('--camera-brightness', CAMERA_BRIGHTNESS);
+
 const state = {
   screen: 'start',
   photoCount: null,
@@ -17,21 +22,16 @@ const video = document.querySelector('#webcamVideo');
 const canvas = document.querySelector('#photoCanvas');
 const preview = document.querySelector('#photoPreview');
 const countdown = document.querySelector('#countdown');
+const cameraFlash = document.querySelector('#cameraFlash');
 const cameraMessage = document.querySelector('#cameraMessage');
 const toast = document.querySelector('#toast');
-const printingScreen = document.querySelector('[data-screen="printing"]');
-const printingEyebrow = document.querySelector('#printingEyebrow');
-const printingTitle = document.querySelector('#printingTitle');
-const printingCopy = document.querySelector('#printingCopy');
-const printingStamp = document.querySelector('#printingStamp');
-const printingVideo = document.querySelector('#printingVideo');
-const printingProgress = document.querySelector('#printingProgress');
 const startScreen = document.querySelector('[data-screen="start"]');
 const printCopiesPreview = document.querySelector('#printCopiesPreview');
 const printCopiesValue = document.querySelector('#printCopiesValue');
 const printCopiesMinus = document.querySelector('#printCopiesMinus');
 const printCopiesPlus = document.querySelector('#printCopiesPlus');
 const scanPreview = document.querySelector('#scanPreview');
+const scanQrBox = document.querySelector('#scanQrBox');
 const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
 let touchDistance = 0;
@@ -207,7 +207,7 @@ function startCountdown() {
   state.countdownTimer = setInterval(tick, 1000);
 }
 
-function drawCover(source, targetWidth, targetHeight) {
+function drawCover(source, targetWidth, targetHeight, zoom = 1) {
   const sourceRatio = source.videoWidth / source.videoHeight;
   const targetRatio = targetWidth / targetHeight;
   let sourceWidth = source.videoWidth;
@@ -221,7 +221,21 @@ function drawCover(source, targetWidth, targetHeight) {
     sourceHeight = source.videoWidth / targetRatio;
     sourceY = (source.videoHeight - sourceHeight) / 2;
   }
+  if (zoom > 1) {
+    const zoomedWidth = sourceWidth / zoom;
+    const zoomedHeight = sourceHeight / zoom;
+    sourceX += (sourceWidth - zoomedWidth) / 2;
+    sourceY += (sourceHeight - zoomedHeight) / 2;
+    sourceWidth = zoomedWidth;
+    sourceHeight = zoomedHeight;
+  }
   return { sourceX, sourceY, sourceWidth, sourceHeight };
+}
+
+function flashCamera() {
+  if (!cameraFlash) return;
+  cameraFlash.classList.add('is-active');
+  requestAnimationFrame(() => requestAnimationFrame(() => cameraFlash.classList.remove('is-active')));
 }
 
 function captureSlotPhoto(slot) {
@@ -229,8 +243,9 @@ function captureSlotPhoto(slot) {
   slotCanvas.width = slot.width;
   slotCanvas.height = slot.height;
   const context = slotCanvas.getContext('2d');
-  const crop = drawCover(video, slot.width, slot.height);
+  const crop = drawCover(video, slot.width, slot.height, CAMERA_ZOOM);
   context.save();
+  context.filter = `brightness(${CAMERA_BRIGHTNESS})`;
   context.translate(slot.width, 0);
   context.scale(-1, 1);
   context.drawImage(video, crop.sourceX, crop.sourceY, crop.sourceWidth, crop.sourceHeight, 0, 0, slot.width, slot.height);
@@ -280,6 +295,7 @@ async function capturePhotoStep() {
     const layout = FRAME_LAYOUTS[state.photoCount];
     const slot = layout.slots[state.capturedPhotos.length];
     state.capturedPhotos.push(captureSlotPhoto(slot));
+    flashCamera();
     if (state.capturedPhotos.length < state.photoCount) {
       updateCameraMessage();
       setTimeout(startCountdown, 700);
@@ -293,16 +309,33 @@ async function capturePhotoStep() {
   }
 }
 
-function showPrintingComplete() {
-  printingVideo.hidden = true;
-  printingScreen.classList.remove('is-video-playing');
-  printingScreen.classList.add('is-done');
-  printingEyebrow.textContent = 'MOCK PRINTER / DONE';
-  printingTitle.innerHTML = 'Your photo is<br><em>ready.</em>';
-  printingCopy.textContent = 'Mock print completed successfully. The real printer can replace this service later.';
-  printingStamp.innerHTML = 'RPB<br>OK';
+async function pollForQrCode(sessionId, { attempts = 20, intervalMs = 1000 } = {}) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const result = await apiRequest(`/api/sessions/${sessionId}`);
+    if (!result) return null;
+    if (result.session.uploadStatus === 'DONE') return result.session.qrCode;
+    if (result.session.uploadStatus === 'FAILED') return null;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return null;
+}
+
+async function showPrintingComplete() {
   scanPreview.src = state.composedPhoto;
+  scanQrBox.innerHTML = '';
+  scanQrBox.textContent = 'Preparing your QR code...';
   showScreen('scan');
+
+  const qrCode = state.serverSessionId ? await pollForQrCode(state.serverSessionId) : null;
+  scanQrBox.innerHTML = '';
+  if (qrCode) {
+    const qrImage = document.createElement('img');
+    qrImage.src = qrCode;
+    qrImage.alt = 'Scan to download your photo';
+    scanQrBox.appendChild(qrImage);
+  } else {
+    scanQrBox.textContent = 'QR code unavailable. Please ask staff for help.';
+  }
 }
 
 function updatePrintCopiesUI() {
@@ -314,8 +347,6 @@ function updatePrintCopiesUI() {
 function resetSession() {
   clearCountdown();
   stopCamera();
-  printingVideo.pause();
-  printingVideo.currentTime = 0;
   state.screen = 'start';
   state.photoCount = null;
   state.frame = null;
@@ -324,16 +355,11 @@ function resetSession() {
   state.printCopies = 1;
   state.serverSessionId = null;
   state.serverSessionPromise = null;
-  printingScreen.classList.remove('is-done');
-  printingScreen.classList.remove('is-video-playing');
-  printingEyebrow.textContent = 'MOCK PRINTER';
-  printingTitle.innerHTML = 'Printing your<br><em>keepsake.</em>';
-  printingCopy.textContent = 'Sending your photo to the simulated printer...';
-  printingStamp.innerHTML = 'RPB<br>...';
   canvas.width = 0;
   canvas.height = 0;
   preview.removeAttribute('src');
   printCopiesPreview.removeAttribute('src');
+  printCopiesConfirmButton.disabled = false;
   scanPreview.removeAttribute('src');
   previewWraps.forEach((wrap) => { wrap.style.aspectRatio = ''; });
   updatePrintCopiesUI();
@@ -397,30 +423,20 @@ printCopiesPlus.addEventListener('click', () => {
   state.printCopies += 1;
   updatePrintCopiesUI();
 });
-document.querySelector('#printCopiesConfirmButton').addEventListener('click', async () => {
+const printCopiesConfirmButton = document.querySelector('#printCopiesConfirmButton');
+printCopiesConfirmButton.addEventListener('click', async () => {
+  if (printCopiesConfirmButton.disabled) return;
+  printCopiesConfirmButton.disabled = true;
   const transactionData = { photoCount: state.photoCount, frame: state.frame, printCopies: state.printCopies, photo: state.composedPhoto };
   console.info('Prototype transaction ready:', transactionData);
   if (state.serverSessionId) {
     const result = await apiRequest(`/api/sessions/${state.serverSessionId}/print`, { method: 'POST', body: JSON.stringify({ printCopies: state.printCopies }) });
-    if (!result) return;
+    if (!result) {
+      printCopiesConfirmButton.disabled = false;
+      return;
+    }
   }
   showScreen('printing');
-  printingScreen.classList.add('is-video-playing');
-  printingVideo.currentTime = 0;
-  printingVideo.hidden = false;
-  printingProgress.hidden = true;
-  printingVideo.play().catch(() => {
-    printingScreen.classList.remove('is-video-playing');
-    printingVideo.hidden = true;
-    printingProgress.hidden = false;
-    setTimeout(showPrintingComplete, 3200);
-  });
-});
-printingVideo.addEventListener('ended', () => setTimeout(showPrintingComplete, 250));
-printingVideo.addEventListener('error', () => {
-  printingScreen.classList.remove('is-video-playing');
-  printingVideo.hidden = true;
-  printingProgress.hidden = false;
   setTimeout(showPrintingComplete, 3200);
 });
 document.querySelector('#scanContinueButton').addEventListener('click', () => showScreen('thankyou'));
