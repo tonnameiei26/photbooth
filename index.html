@@ -16,7 +16,7 @@
     </section>
 
     <section class="screen brand-screen shots-screen" data-screen="shots" aria-labelledby="shotsTitle">
-      <img class="brand-logo" src="assets/logo.png" alt="Snaplicious Studio">
+      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
       <h2 class="script-heading" id="shotsTitle">Select how many shots you want on your print</h2>
       <div class="shot-grid" id="shotGrid">
         <button class="shot-option" data-photocount="1" type="button">
@@ -77,23 +77,29 @@
         <span class="pill-button stepper-pill" id="printCopiesValue">1 Print</span>
         <button class="stepper-arrow" id="printCopiesPlus" type="button" aria-label="Increase print copies">+</button>
       </div>
-      <button class="pill-button corner-button corner-button--bottom" id="printCopiesConfirmButton" type="button">Confirm</button>
+      <button class="pill-button" id="printCopiesConfirmButton" type="button">Confirm</button>
     </section>
 
-    <!--
-      Rough first pass -- user hasn't finalized the design for this screen yet.
-      Also no Firebase project exists yet (per CLAUDE.md, photo upload needs a
-      real service account + Storage bucket), so #scanQrBox stays an empty
-      placeholder until that's wired up. Layout/wording here is expected to
-      change once the real design comes in.
-    -->
     <section class="screen scan-screen brand-screen" data-screen="scan" aria-labelledby="scanTitle">
-      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
-      <h2 class="script-heading" id="scanTitle">Scan for Photos</h2>
-      <div class="photo-preview-wrap"><img id="scanPreview" alt="Your composed photo"></div>
-      <p class="script-heading scan-label">Scan me</p>
-      <div class="qr-box" id="scanQrBox" aria-hidden="true"></div>
-      <button class="pill-button corner-button corner-button--bottom" id="scanContinueButton" type="button">Continue</button>
+      <div class="scan-content">
+        <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
+        <div class="scan-heading-group">
+          <h2 class="script-heading scan-heading" id="scanTitle">thank you</h2>
+          <p class="script-heading scan-subheading">Scan the QR code to save your photos</p>
+        </div>
+        <div class="qr-row">
+          <div class="qr-item">
+            <div class="qr-box" id="scanQrBoxColor" aria-hidden="true"></div>
+            <p class="qr-label">Color</p>
+          </div>
+          <div class="qr-item">
+            <div class="qr-box" id="scanQrBoxBw" aria-hidden="true"></div>
+            <p class="qr-label">Black &amp; White</p>
+          </div>
+        </div>
+        <button class="pill-button" id="scanContinueButton" type="button">Back to Home</button>
+      </div>
+      <p class="script-heading scan-footnote">Don't forget to grab your prints below</p>
     </section>
 
     <section class="screen printing-screen brand-screen" data-screen="printing" aria-labelledby="printingTitle">
@@ -102,13 +108,6 @@
       <p class="status-message">Sending your photo to the printer...</p>
       <div class="printing-progress" id="printingProgress"><span></span></div>
       <button class="pill-button corner-button corner-button--bottom" id="resetButton" type="button">Start Over</button>
-    </section>
-
-    <section class="screen thankyou-screen brand-screen" data-screen="thankyou" aria-labelledby="thankyouTitle">
-      <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
-      <h2 class="script-heading" id="thankyouTitle">Thank you for stopping by!</h2>
-      <p class="status-message">Your keepsake is ready. We hope it keeps a little moment close.</p>
-      <button class="pill-button" id="thankyouResetButton" type="button">Start a New Session</button>
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

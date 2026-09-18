@@ -48,7 +48,7 @@ function packBits(ditheredValues, width, height) {
   return packed;
 }
 
-async function dataUrlToRaster(dataUrl) {
+async function ditherForPrint(dataUrl) {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
   const inputBuffer = Buffer.from(base64, 'base64');
   const { data, info } = await sharp(inputBuffer)
@@ -66,6 +66,11 @@ async function dataUrlToRaster(dataUrl) {
   const width = info.width;
   const height = info.height;
   const dithered = floydSteinbergDither(data, width, height);
+  return { dithered, width, height };
+}
+
+async function dataUrlToRaster(dataUrl) {
+  const { dithered, width, height } = await ditherForPrint(dataUrl);
   const packed = packBits(dithered, width, height);
 
   const header = Buffer.from([

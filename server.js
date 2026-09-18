@@ -21,7 +21,7 @@ const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SEL
 
 function createSession() {
   const now = new Date().toISOString();
-  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, createdAt: now, updatedAt: now };
+  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, photoUrlBw: null, qrCodeBw: null, createdAt: now, updatedAt: now };
   sessions.set(session.id, session);
   db.saveSession(session);
   return session;
@@ -99,7 +99,7 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
     .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
     .catch((error) => updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message }));
   storage.uploadAndGenerateQr(session.photo, session.id)
-    .then(({ photoUrl, qrCode }) => updateSession(session, { uploadStatus: 'DONE', photoUrl, qrCode }))
+    .then(({ photoUrl, qrCode, photoUrlBw, qrCodeBw }) => updateSession(session, { uploadStatus: 'DONE', photoUrl, qrCode, photoUrlBw, qrCodeBw }))
     .catch((error) => updateSession(session, { uploadStatus: 'FAILED', uploadError: error.message }));
   response.status(202).json({ session });
 });

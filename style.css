@@ -10,8 +10,8 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .screen.screen--active { display: flex; }
 /* Snaplicious brand screens (start / shots / payment / camera) */
 .brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #fff; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
-.brand-logo { display: block; width: clamp(25rem, 38vh, 43rem); height: auto; }
-.brand-logo--compact { width: clamp(11rem, 24vw, 15rem); margin-bottom: -.25rem; }
+.brand-logo { display: block; width: min(10rem, 90vw); height: auto; }
+.brand-logo--compact { width: min(10rem, 90vw); margin-bottom: -.25rem; }
 .script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.6rem, 4vh, 2.6rem); line-height: 1.15; max-width: 40rem; }
 .pill-button { display: inline-flex; align-items: center; justify-content: center; min-height: 3.2rem; padding: .6rem 2rem; border: 1px solid #1a1a1a; border-radius: 999px; background: #fff; font-family: var(--script); font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .pill-button:disabled { opacity: .35; }
@@ -26,7 +26,7 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .start-hero-screen { padding: 0; }
 .start-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
-.shots-screen { height: 100dvh; overflow: hidden; justify-content: flex-start; }
+.shots-screen { height: 100dvh; overflow: hidden; }
 .shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: center; align-items: start; gap: 2rem clamp(1.5rem, 4vw, 3rem); width: 100%; max-width: 40rem; }
 .shot-option { display: flex; flex-direction: column; align-items: center; gap: .9rem; padding: 0; border: 0; background: transparent; text-align: center; }
 .shot-option-thumb { display: block; width: clamp(6rem, 12vh, 10rem); height: auto; overflow: hidden; border: 1px solid #1a1a1a; border-radius: .4rem; background: #fff; transition: border-color .2s, transform .2s; }
@@ -37,6 +37,16 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 
 .qr-box { width: min(70vw, 24rem); aspect-ratio: 1; border: 1px solid #1a1a1a; background: #fff; display: grid; place-items: center; padding: .5rem; text-align: center; color: #1a1a1a; font-size: .75rem; }
 .qr-box img { width: 100%; height: 100%; object-fit: contain; }
+.qr-row { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: clamp(.75rem, 2vh, 1.5rem); }
+.qr-row .qr-box { width: min(45vw, 14rem); }
+.qr-item { display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.qr-label { margin: 0; font-family: var(--script); font-size: clamp(1rem, 2.5vw, 1.3rem); }
+.scan-screen { justify-content: space-between; padding-block: clamp(3rem, 8vh, 5rem) clamp(2.5rem, 6vh, 4rem); }
+.scan-content { display: flex; flex-direction: column; align-items: center; gap: clamp(1.5rem, 4vh, 2.5rem); }
+.scan-heading-group { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+.scan-heading { font-size: clamp(3rem, 8vh, 5rem); }
+.scan-subheading { font-size: clamp(1.2rem, 2.8vh, 1.6rem); font-weight: 500; }
+.scan-footnote { margin: 0; font-size: clamp(1.1rem, 2.5vh, 1.4rem); }
 .payment-timer, .payment-total { color: #1a1a1a; }
 .stepper { display: flex; align-items: center; gap: 1.5rem; }
 .stepper-arrow { font-family: var(--script); font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1; background: none; padding: .25rem .5rem; }
@@ -48,10 +58,13 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 450ms ease-out; }
 .camera-flash.is-active { opacity: 1; transition: none; }
 .photo-preview-wrap { width: auto; height: min(60vh, 34rem); max-width: 78vw; aspect-ratio: 945 / 1772; border-radius: .4rem; overflow: hidden; border: 1px solid #1a1a1a; background: #fff; }
-#photoPreview, #printCopiesPreview, #scanPreview { display: block; width: 100%; height: 100%; object-fit: contain; }
+.preview-screen .photo-preview-wrap, .printcopies-screen .photo-preview-wrap { height: min(64vh, 46rem); max-width: 82vw; }
+#photoPreview, #printCopiesPreview { display: block; width: 100%; height: 100%; object-fit: contain; }
 .action-row { display: flex; justify-content: center; gap: .9rem; width: 100%; max-width: 28rem; }
-.scan-label { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
 .printing-progress { width: min(22rem, 80vw); height: .35rem; background: rgba(23,33,38,.12); overflow: hidden; }
+.printing-screen .brand-logo--compact { width: min(11.5rem, 90vw); }
+.printing-screen .script-heading { font-size: clamp(1.8rem, 4.4vh, 2.9rem); }
+.printing-screen .status-message { font-size: .78rem; }
 .printing-progress span { display: block; width: 15%; height: 100%; background: var(--logo-accent); animation: printing 3s linear forwards; }
 @keyframes printing { to { width: 100%; } }
 .screen[data-screen='start'] { touch-action: none; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
@@ -88,13 +101,11 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
    gets clipped instead of scrolling -- sizes below are picked to fit inside
    that fixed box with headroom, not just to look proportional. */
 @media (min-width: 768px) and (max-width: 900px) and (orientation: portrait) {
-	.brand-screen { padding-block: clamp(1.75rem, 4vh, 2.75rem); gap: clamp(1.25rem, 3vh, 2rem); }
+	/* Compensates for the bigger .brand-logo/--compact: tighter padding/gap
+	   reclaims the extra height so content still fits the fixed 1180px box. */
+	.brand-screen { padding-block: clamp(1.25rem, 2.75vh, 2rem); gap: clamp(.85rem, 2vh, 1.25rem); }
 	.screen[data-screen='shots'] .script-heading { font-size: clamp(1.6rem, 4vw, 2.4rem); }
 	.screen[data-screen='shots'] .shot-grid { max-width: 34rem; gap: 1.25rem clamp(1.25rem, 3.5vw, 2.25rem); }
 	.camera-stage { width: min(68vw, 32rem); }
 	.qr-box { width: min(60vw, 28rem); }
-	/* scan-screen stacks a photo AND a QR box in one column -- both need to
-	   shrink here or the two combined blow past the fixed 1180px height. */
-	.scan-screen .photo-preview-wrap { height: min(30vh, 18rem); }
-	.scan-screen .qr-box { width: min(45vw, 14rem); }
 }

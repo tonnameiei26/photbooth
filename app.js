@@ -30,8 +30,8 @@ const printCopiesPreview = document.querySelector('#printCopiesPreview');
 const printCopiesValue = document.querySelector('#printCopiesValue');
 const printCopiesMinus = document.querySelector('#printCopiesMinus');
 const printCopiesPlus = document.querySelector('#printCopiesPlus');
-const scanPreview = document.querySelector('#scanPreview');
-const scanQrBox = document.querySelector('#scanQrBox');
+const scanQrBoxColor = document.querySelector('#scanQrBoxColor');
+const scanQrBoxBw = document.querySelector('#scanQrBoxBw');
 const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
 let touchDistance = 0;
@@ -313,29 +313,35 @@ async function pollForQrCode(sessionId, { attempts = 20, intervalMs = 1000 } = {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const result = await apiRequest(`/api/sessions/${sessionId}`);
     if (!result) return null;
-    if (result.session.uploadStatus === 'DONE') return result.session.qrCode;
+    if (result.session.uploadStatus === 'DONE') return { qrCode: result.session.qrCode, qrCodeBw: result.session.qrCodeBw };
     if (result.session.uploadStatus === 'FAILED') return null;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
   return null;
 }
 
-async function showPrintingComplete() {
-  scanPreview.src = state.composedPhoto;
-  scanQrBox.innerHTML = '';
-  scanQrBox.textContent = 'Preparing your QR code...';
-  showScreen('scan');
-
-  const qrCode = state.serverSessionId ? await pollForQrCode(state.serverSessionId) : null;
-  scanQrBox.innerHTML = '';
+function renderQrBox(box, qrCode, altText) {
+  box.innerHTML = '';
   if (qrCode) {
     const qrImage = document.createElement('img');
     qrImage.src = qrCode;
-    qrImage.alt = 'Scan to download your photo';
-    scanQrBox.appendChild(qrImage);
+    qrImage.alt = altText;
+    box.appendChild(qrImage);
   } else {
-    scanQrBox.textContent = 'QR code unavailable. Please ask staff for help.';
+    box.textContent = 'QR code unavailable. Please ask staff for help.';
   }
+}
+
+async function showPrintingComplete() {
+  scanQrBoxColor.innerHTML = '';
+  scanQrBoxColor.textContent = 'Preparing your QR code...';
+  scanQrBoxBw.innerHTML = '';
+  scanQrBoxBw.textContent = 'Preparing your QR code...';
+  showScreen('scan');
+
+  const result = state.serverSessionId ? await pollForQrCode(state.serverSessionId) : null;
+  renderQrBox(scanQrBoxColor, result?.qrCode, 'Scan to download your color photo');
+  renderQrBox(scanQrBoxBw, result?.qrCodeBw, 'Scan to download your black and white photo');
 }
 
 function updatePrintCopiesUI() {
@@ -360,7 +366,6 @@ function resetSession() {
   preview.removeAttribute('src');
   printCopiesPreview.removeAttribute('src');
   printCopiesConfirmButton.disabled = false;
-  scanPreview.removeAttribute('src');
   previewWraps.forEach((wrap) => { wrap.style.aspectRatio = ''; });
   updatePrintCopiesUI();
   document.querySelectorAll('.selected').forEach((item) => item.classList.remove('selected'));
@@ -439,7 +444,6 @@ printCopiesConfirmButton.addEventListener('click', async () => {
   showScreen('printing');
   setTimeout(showPrintingComplete, 3200);
 });
-document.querySelector('#scanContinueButton').addEventListener('click', () => showScreen('thankyou'));
+document.querySelector('#scanContinueButton').addEventListener('click', resetSession);
 document.querySelector('#resetButton').addEventListener('click', resetSession);
-document.querySelector('#thankyouResetButton').addEventListener('click', resetSession);
 window.addEventListener('pagehide', () => { clearCountdown(); stopCamera(); });
