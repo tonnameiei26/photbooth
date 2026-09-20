@@ -7,3 +7,4 @@ node_modules/
 certs/
 *.db
 *.db-journal
+assets/test*.png

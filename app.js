@@ -1,4 +1,4 @@
-const CAMERA_ZOOM = 1.35;
+const CAMERA_ZOOM = 1.6;
 const CAMERA_BRIGHTNESS = 1;
 document.documentElement.style.setProperty('--camera-zoom', CAMERA_ZOOM);
 document.documentElement.style.setProperty('--camera-brightness', CAMERA_BRIGHTNESS);

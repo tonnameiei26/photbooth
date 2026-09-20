@@ -1,7 +1,7 @@
-require('dotenv').config({ quiet: true });
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+require('dotenv').config({ path: path.join(__dirname, '.env'), quiet: true });
 const http = require('http');
 const https = require('https');
 const express = require('express');
