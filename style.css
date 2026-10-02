@@ -18,6 +18,8 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .corner-button { position: absolute; right: clamp(1.5rem, 4vw, 3rem); min-height: 2.6rem; padding: .4rem 1.6rem; }
 .corner-button--top { top: clamp(1.5rem, 4vw, 3rem); }
 .corner-button--bottom { bottom: clamp(1.5rem, 4vw, 3rem); }
+/* Back buttons mirror the Next button: same corner distance, left side. */
+.corner-button--left { right: auto; left: clamp(1.5rem, 4vw, 3rem); }
 
 /* Start screen is one full-bleed design image (assets/first.png), sized to
    the exact 2x-scale of the 820x1180 iPad target (1640x2360) so it fills
@@ -67,10 +69,14 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .printing-screen .status-message { font-size: .78rem; }
 .printing-progress span { display: block; width: 15%; height: 100%; background: var(--logo-accent); animation: printing 3s linear forwards; }
 @keyframes printing { to { width: 100%; } }
-.screen[data-screen='start'] { touch-action: none; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+/* The start screen is a cover lying on top of the shots screen, which is kept
+   rendered underneath it. Sliding the cover away then reveals the next screen
+   straight away instead of a blank page. */
+.screen[data-screen='start'] { position: absolute; inset: 0; z-index: 2; background: #fff; touch-action: none; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+.screen[data-screen='start'].screen--active ~ .screen[data-screen='shots'] { display: flex; }
 .screen[data-screen='start'].is-dragging { transition: none; }
 .screen[data-screen='start'].is-leaving { transform: translateY(-100%); transition-duration: .45s; }
-.toast { position: fixed; z-index: 10; left: 50%; bottom: 1.5rem; max-width: calc(100% - 2rem); padding: .8rem 1rem; background: var(--ink); color: var(--paper); font-size: .65rem; transform: translate(-50%, 180%); transition: transform .25s; } .toast.visible { transform: translate(-50%, 0); }
+.toast { position: fixed; z-index: 10; left: 50%; bottom: 1.5rem; max-width: calc(100% - 2rem); padding: .8rem 1rem; background: var(--ink); color: var(--paper); font-size: .65rem; transform: translate(-50%, 180%); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .25s, opacity .25s, visibility 0s .25s; } .toast.visible { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .25s, opacity .25s; }
 @media (max-width: 700px) { .shot-grid { max-width: 22rem; } .photo-preview-wrap { height: min(48vh, 28rem); max-width: 82vw; } }
 @media (min-width: 701px) and (max-width: 1100px) {
 	.screen { padding-inline: clamp(2rem, 6vw, 4.5rem); }
@@ -83,9 +89,15 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 	.camera-stage { width: min(100%, 22rem); max-height: 58svh; }
 }
 @media (pointer: coarse) and (min-width: 701px) and (max-width: 1366px) {
-	html, body { width: 100%; height: 100%; overflow: hidden; }
-	.booth-shell { width: 100vw; height: 100dvh; min-height: 0; }
-	.screen { width: 100vw; height: 100dvh; min-height: 0; overflow: hidden; }
+	/* White so that if a sliver of page ever shows past the shell it blends in
+	   with the brand screens instead of showing as a grey strip. */
+	html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; }
+	/* Pinned to the top-left of the display rather than sized with 100dvh: in an
+	   iOS "Add to Home Screen" app, 100dvh comes out one status bar short and
+	   leaves a gap at the bottom. --app-height is set by fitStandaloneHeight()
+	   in app.js to the real screen height when that happens. */
+	.booth-shell { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-height, 100%); min-height: 0; }
+	.screen, .shots-screen { width: 100%; height: 100%; min-height: 0; overflow: hidden; }
 	.shot-option, .stepper-button, .pill-button { user-select: none; min-height: 60px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

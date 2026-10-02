@@ -3,6 +3,23 @@ const CAMERA_BRIGHTNESS = 1;
 document.documentElement.style.setProperty('--camera-zoom', CAMERA_ZOOM);
 document.documentElement.style.setProperty('--camera-brightness', CAMERA_BRIGHTNESS);
 
+// iOS "Add to Home Screen" apps report a page height that is one status bar
+// shorter than the real display, which leaves an empty strip at the bottom.
+// When that happens, tell the CSS the true screen height (see .booth-shell).
+function fitStandaloneHeight() {
+  const isHomeScreenApp = window.navigator.standalone === true;
+  const isPortrait = window.matchMedia('(orientation: portrait)').matches;
+  const screenHeight = isHomeScreenApp && isPortrait ? window.screen.height : 0;
+  if (screenHeight > window.innerHeight) {
+    document.documentElement.style.setProperty('--app-height', `${screenHeight}px`);
+  } else {
+    document.documentElement.style.removeProperty('--app-height');
+  }
+}
+fitStandaloneHeight();
+window.addEventListener('resize', fitStandaloneHeight);
+window.addEventListener('orientationchange', fitStandaloneHeight);
+
 const state = {
   screen: 'start',
   photoCount: null,
@@ -32,6 +49,7 @@ const printCopiesMinus = document.querySelector('#printCopiesMinus');
 const printCopiesPlus = document.querySelector('#printCopiesPlus');
 const scanQrBoxColor = document.querySelector('#scanQrBoxColor');
 const scanQrBoxBw = document.querySelector('#scanQrBoxBw');
+const cameraBackButton = document.querySelector('#cameraBackButton');
 const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
 let touchDistance = 0;
@@ -137,6 +155,7 @@ function notify(message) {
 
 async function initCamera() {
   stopCamera();
+  updateCameraBackButton();
   if (!navigator.mediaDevices?.getUserMedia) {
     cameraMessage.textContent = 'Camera access is not supported in this browser.';
     notify('Camera access is not supported in this browser.');
@@ -164,6 +183,13 @@ function stopCamera() {
   video.srcObject = null;
 }
 
+// Going back is only offered before shooting starts. Once the countdown is
+// running or a shot has been taken, the sequence runs to the preview screen,
+// where "Try Again" is the way to redo it.
+function updateCameraBackButton() {
+  cameraBackButton.disabled = state.countdownRunning || state.capturedPhotos.length > 0;
+}
+
 function updateCameraMessage() {
   cameraMessage.textContent = `Shot ${state.capturedPhotos.length + 1} of ${state.photoCount} — camera is ready.`;
 }
@@ -187,11 +213,13 @@ function clearCountdown() {
   state.countdownTimer = null;
   state.countdownRunning = false;
   countdown.textContent = '';
+  updateCameraBackButton();
 }
 
 function startCountdown() {
   if (state.countdownRunning || !state.cameraStream) return;
   state.countdownRunning = true;
+  updateCameraBackButton();
   const moments = ['3', '2', '1'];
   let index = 0;
   const tick = () => {
@@ -295,6 +323,7 @@ async function capturePhotoStep() {
     const layout = FRAME_LAYOUTS[state.photoCount];
     const slot = layout.slots[state.capturedPhotos.length];
     state.capturedPhotos.push(captureSlotPhoto(slot));
+    updateCameraBackButton();
     flashCamera();
     if (state.capturedPhotos.length < state.photoCount) {
       updateCameraMessage();
@@ -309,7 +338,7 @@ async function capturePhotoStep() {
   }
 }
 
-async function pollForQrCode(sessionId, { attempts = 20, intervalMs = 1000 } = {}) {
+async function pollForQrCode(sessionId, { attempts = 50, intervalMs = 400 } = {}) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const result = await apiRequest(`/api/sessions/${sessionId}`);
     if (!result) return null;
@@ -404,6 +433,11 @@ startScreen.addEventListener('pointercancel', () => {
 startScreen.addEventListener('click', startSession);
 document.querySelector('#shotGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-photocount]'); if (option) selectShotCount(Number(option.dataset.photocount)); });
 document.querySelector('#shotsNextButton').addEventListener('click', confirmShotSelection);
+document.querySelector('#shotsBackButton').addEventListener('click', resetSession);
+cameraBackButton.addEventListener('click', () => {
+  if (cameraBackButton.disabled) return;
+  showScreen('shots');
+});
 document.querySelector('#captureButton').addEventListener('click', startCountdown);
 document.querySelector('#retakeButton').addEventListener('click', () => {
   state.capturedPhotos = [];
@@ -443,6 +477,12 @@ printCopiesConfirmButton.addEventListener('click', async () => {
   }
   showScreen('printing');
   setTimeout(showPrintingComplete, 3200);
+});
+document.querySelector('#printCopiesBackButton').addEventListener('click', () => {
+  // Once Confirm has been pressed the print job is already on its way.
+  if (printCopiesConfirmButton.disabled) return;
+  syncServerSession({ state: 'PREVIEW' });
+  showScreen('preview');
 });
 document.querySelector('#scanContinueButton').addEventListener('click', resetSession);
 document.querySelector('#resetButton').addEventListener('click', resetSession);

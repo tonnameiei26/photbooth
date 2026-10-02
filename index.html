@@ -6,8 +6,9 @@
   <meta name="theme-color" content="#f5efe6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
   <title>Receipt Photo Booth</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261003d">
 </head>
 <body>
   <main class="booth-shell">
@@ -21,21 +22,22 @@
       <div class="shot-grid" id="shotGrid">
         <button class="shot-option" data-photocount="1" type="button">
           <span class="shot-option-thumb"><img src="assets/thumbs/fi1-thumb.jpg" alt="1 shot frame layout" draggable="false"></span>
-          <b>80 THB &middot; 1 Shot</b>
+          <b>1 Shot</b>
         </button>
         <button class="shot-option" data-photocount="2" type="button">
           <span class="shot-option-thumb"><img src="assets/thumbs/fi2-thumb.jpg" alt="2 shots frame layout" draggable="false"></span>
-          <b>80 THB &middot; 2 Shots</b>
+          <b>2 Shots</b>
         </button>
         <button class="shot-option" data-photocount="3" type="button">
           <span class="shot-option-thumb"><img src="assets/thumbs/fi3-thumb.jpg" alt="3 shots frame layout" draggable="false"></span>
-          <b>80 THB &middot; 3 Shots</b>
+          <b>3 Shots</b>
         </button>
         <button class="shot-option" data-photocount="4" type="button">
           <span class="shot-option-thumb"><img src="assets/thumbs/fi4-thumb.jpg" alt="4 shots frame layout" draggable="false"></span>
-          <b>80 THB &middot; 4 Shots</b>
+          <b>4 Shots</b>
         </button>
       </div>
+      <button class="pill-button corner-button corner-button--bottom corner-button--left" id="shotsBackButton" type="button">Back</button>
       <button class="pill-button corner-button corner-button--bottom" id="shotsNextButton" type="button">Next</button>
     </section>
 
@@ -59,6 +61,7 @@
       <div class="camera-stage"><video id="webcamVideo" autoplay playsinline muted></video><div class="countdown" id="countdown" aria-live="assertive"></div><div class="camera-flash" id="cameraFlash"></div></div>
       <p class="status-message" id="cameraMessage">Camera is ready.</p>
       <button class="pill-button tap-button" id="captureButton" type="button">Tap to Start</button>
+      <button class="pill-button corner-button corner-button--bottom corner-button--left" id="cameraBackButton" type="button">Back</button>
     </section>
 
     <section class="screen preview-screen brand-screen" data-screen="preview" aria-labelledby="previewTitle">
@@ -78,6 +81,7 @@
         <button class="stepper-arrow" id="printCopiesPlus" type="button" aria-label="Increase print copies">+</button>
       </div>
       <button class="pill-button" id="printCopiesConfirmButton" type="button">Confirm</button>
+      <button class="pill-button corner-button corner-button--bottom corner-button--left" id="printCopiesBackButton" type="button">Back</button>
     </section>
 
     <section class="screen scan-screen brand-screen" data-screen="scan" aria-labelledby="scanTitle">
@@ -113,6 +117,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
-  <script src="app.js"></script>
+  <script src="app.js?v=20261003d"></script>
 </body>
 </html>

@@ -4,6 +4,10 @@ const sharp = require('sharp');
 const DEVICE_PATH = process.env.PRINTER_DEVICE || '/dev/usb/lp0';
 const PRINT_WIDTH_DOTS = 576; // 80mm paper, 203dpi thermal head, ~72mm printable width
 const WIDTH_BYTES = PRINT_WIDTH_DOTS / 8;
+// The printer sits in the cabinet so that paper feeds out toward the guest
+// bottom-edge first, so the image is rotated 180 degrees to come out upright.
+// Set PRINT_ROTATE_180=false in .env if the printer is ever remounted the other way.
+const ROTATE_180 = process.env.PRINT_ROTATE_180 !== 'false';
 
 const ESC_INIT = Buffer.from([0x1b, 0x40]);
 const CUT = Buffer.from([0x1d, 0x56, 0x01]);
@@ -53,6 +57,7 @@ async function ditherForPrint(dataUrl) {
   const inputBuffer = Buffer.from(base64, 'base64');
   const { data, info } = await sharp(inputBuffer)
     .flatten({ background: '#ffffff' })
+    .rotate(ROTATE_180 ? 180 : 0)
     .resize({ width: PRINT_WIDTH_DOTS })
     .grayscale()
     .median(3)
@@ -85,7 +90,10 @@ async function printPhoto(dataUrl, copies = 1) {
   const raster = await dataUrlToRaster(dataUrl);
   const receipt = Buffer.concat([ESC_INIT, raster, FEED, CUT]);
   const job = Buffer.concat(Array(copies).fill(receipt));
-  fs.writeFileSync(DEVICE_PATH, job);
+  // Written in the background: the printer takes the data only as fast as it
+  // prints, and a blocking write would freeze the whole server meanwhile
+  // (stalling the photo upload and the iPad's requests for its QR codes).
+  await fs.promises.writeFile(DEVICE_PATH, job);
 }
 
 function isReady() {
