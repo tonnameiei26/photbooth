@@ -104,12 +104,25 @@ async function apiRequest(endpoint, options = {}) {
     } catch (error) {
       throw new Error('Backend response was not valid JSON');
     }
+    if (response.status === 404 && endpoint.startsWith('/api/sessions/')) {
+      handleLostSession();
+      return null;
+    }
     if (!response.ok) throw new Error(payload.error || 'Server request failed');
     return payload;
   } catch (error) {
     notify(`Server unavailable: ${error.message}`);
     return null;
   }
+}
+
+// The server keeps in-progress sessions in memory only, so a restart (for
+// example after a power cut) forgets the photo the guest just took and it can
+// no longer be printed. Tell them and go back to the start screen to begin again.
+function handleLostSession() {
+  if (state.screen === 'start') return;
+  resetSession();
+  notify('ขออภัย ระบบเพิ่งเริ่มใหม่ กรุณาเริ่มถ่ายรูปอีกครั้ง', 6000);
 }
 
 async function ensureServerSession() {
@@ -149,11 +162,11 @@ function startSession() {
   }, 450);
 }
 
-function notify(message) {
+function notify(message, durationMs = 3500) {
   toast.textContent = message;
   toast.classList.add('visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('visible'), 3500);
+  toastTimer = setTimeout(() => toast.classList.remove('visible'), durationMs);
 }
 
 async function initCamera() {
