@@ -17,6 +17,7 @@ const CERT_PATH = path.join(CERT_DIR, 'cert.pem');
 const KEY_PATH = path.join(CERT_DIR, 'key.pem');
 
 const sessions = new Map();
+const MAX_PRINT_COPIES = 10; // keep in sync with MAX_PRINT_COPIES in app.js
 const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SELECT_PRINT_COPIES', 'PRINTING', 'DONE', 'TIMEOUT']);
 
 function createSession() {
@@ -71,7 +72,7 @@ api.patch('/sessions/:id', requireSession, (request, response) => {
   }
   if (payload.frame !== undefined) changes.frame = String(payload.frame);
   if (payload.printCopies !== undefined) {
-    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > 4) return response.status(400).json({ error: 'printCopies must be an integer from 1 to 4' });
+    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > MAX_PRINT_COPIES) return response.status(400).json({ error: `printCopies must be an integer from 1 to ${MAX_PRINT_COPIES}` });
     changes.printCopies = payload.printCopies;
   }
   response.json({ session: updateSession(request.session, changes) });
@@ -88,14 +89,14 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
   const payload = request.body || {};
   let printCopies = session.printCopies || 1;
   if (payload.printCopies !== undefined) {
-    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > 4) return response.status(400).json({ error: 'printCopies must be an integer from 1 to 4' });
+    if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > MAX_PRINT_COPIES) return response.status(400).json({ error: `printCopies must be an integer from 1 to ${MAX_PRINT_COPIES}` });
     printCopies = payload.printCopies;
   }
   if (!session.photo) return response.status(409).json({ error: 'A photo must be uploaded before printing' });
   if (session.print === 'PROCESSING') return response.status(409).json({ error: 'Print already in progress for this session' });
   if (!printer.isReady()) return response.status(503).json({ error: 'Printer is not connected' });
   updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING' });
-  printer.printPhoto(session.photo, printCopies)
+  printer.printPhoto(session.photo, printCopies, session.frame)
     .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
     .catch((error) => updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message }));
   storage.uploadAndGenerateQr(session.photo, session.id)

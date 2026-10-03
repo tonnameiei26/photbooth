@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const sharp = require('sharp');
 
 const DEVICE_PATH = process.env.PRINTER_DEVICE || '/dev/usb/lp0';
@@ -8,6 +9,49 @@ const WIDTH_BYTES = PRINT_WIDTH_DOTS / 8;
 // bottom-edge first, so the image is rotated 180 degrees to come out upright.
 // Set PRINT_ROTATE_180=false in .env if the printer is ever remounted the other way.
 const ROTATE_180 = process.env.PRINT_ROTATE_180 !== 'false';
+
+// Tone curve applied just before dithering, as [input brightness, output brightness]
+// points (0 = black, 255 = white) joined by straight lines. It lifts the dark and
+// middle tones (hair, shaded skin, wood, backgrounds), which thermal paper prints
+// darker than they look on screen, while leaving near-black (text, frame lines)
+// and near-white (shirts, walls) almost untouched so whites keep their detail.
+const TONE_CURVE = [[0, 0], [30, 33], [70, 91], [110, 132], [150, 166], [200, 207], [225, 228], [255, 255]];
+
+function buildToneLut(points) {
+  const lut = new Uint8Array(256);
+  for (let value = 0; value < 256; value++) {
+    const upper = points.findIndex(([input]) => input >= value);
+    const [x1, y1] = points[upper];
+    const [x0, y0] = points[Math.max(upper - 1, 0)];
+    lut[value] = x1 === x0 ? y1 : Math.round(y0 + ((y1 - y0) * (value - x0)) / (x1 - x0));
+  }
+  return lut;
+}
+
+const TONE_LUT = buildToneLut(TONE_CURVE);
+
+// Frame artwork (titles, menu text, borders, barcode) is never toned or dithered:
+// any frame pixel darker than this prints solid black, the rest stays blank paper,
+// so lettering comes out dark with clean edges. Only the photo slots (the
+// transparent holes in the frame PNG) go through the photo tone steps.
+const FRAME_INK_THRESHOLD = 170;
+const ASSETS_DIR = path.join(__dirname, '..', 'assets');
+
+// Returns one byte per print dot: 255 where the frame PNG covers the paper,
+// 0 inside the photo slots. Null if the frame is missing or does not line up.
+async function loadFrameMask(framePath, width, height) {
+  if (!framePath) return null;
+  const resolved = path.resolve(ASSETS_DIR, '..', framePath);
+  if (!resolved.startsWith(ASSETS_DIR + path.sep) || !fs.existsSync(resolved)) return null;
+  const { data, info } = await sharp(resolved)
+    .ensureAlpha()
+    .extractChannel('alpha')
+    .rotate(ROTATE_180 ? 180 : 0)
+    .resize({ width: PRINT_WIDTH_DOTS })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return info.width === width && info.height === height ? data : null;
+}
 
 const ESC_INIT = Buffer.from([0x1b, 0x40]);
 const CUT = Buffer.from([0x1d, 0x56, 0x01]);
@@ -52,14 +96,16 @@ function packBits(ditheredValues, width, height) {
   return packed;
 }
 
-async function ditherForPrint(dataUrl) {
+async function ditherForPrint(dataUrl, framePath) {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
   const inputBuffer = Buffer.from(base64, 'base64');
-  const { data, info } = await sharp(inputBuffer)
+  const sized = sharp(inputBuffer)
     .flatten({ background: '#ffffff' })
     .rotate(ROTATE_180 ? 180 : 0)
     .resize({ width: PRINT_WIDTH_DOTS })
-    .grayscale()
+    .grayscale();
+  const untouched = await sized.clone().raw().toBuffer();
+  const { data, info } = await sized
     .median(3)
     .clahe({ width: 32, height: 32, maxSlope: 1 })
     .gamma(1.6)
@@ -68,14 +114,22 @@ async function ditherForPrint(dataUrl) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
+  for (let index = 0; index < data.length; index++) data[index] = TONE_LUT[data[index]];
+
   const width = info.width;
   const height = info.height;
+  const frameMask = await loadFrameMask(framePath, width, height);
+  if (frameMask) {
+    for (let index = 0; index < data.length; index++) {
+      if (frameMask[index] >= 128) data[index] = untouched[index] < FRAME_INK_THRESHOLD ? 0 : 255;
+    }
+  }
   const dithered = floydSteinbergDither(data, width, height);
   return { dithered, width, height };
 }
 
-async function dataUrlToRaster(dataUrl) {
-  const { dithered, width, height } = await ditherForPrint(dataUrl);
+async function dataUrlToRaster(dataUrl, framePath) {
+  const { dithered, width, height } = await ditherForPrint(dataUrl, framePath);
   const packed = packBits(dithered, width, height);
 
   const header = Buffer.from([
@@ -86,18 +140,24 @@ async function dataUrlToRaster(dataUrl) {
   return Buffer.concat([header, packed]);
 }
 
-async function printPhoto(dataUrl, copies = 1) {
-  const raster = await dataUrlToRaster(dataUrl);
+let printQueue = Promise.resolve();
+
+async function printPhoto(dataUrl, copies = 1, framePath) {
+  const raster = await dataUrlToRaster(dataUrl, framePath);
   const receipt = Buffer.concat([ESC_INIT, raster, FEED, CUT]);
   const job = Buffer.concat(Array(copies).fill(receipt));
   // Written in the background: the printer takes the data only as fast as it
   // prints, and a blocking write would freeze the whole server meanwhile
   // (stalling the photo upload and the iPad's requests for its QR codes).
-  await fs.promises.writeFile(DEVICE_PATH, job);
+  // One job at a time: a long multi-copy job can still be printing when the next
+  // guest confirms, and two writes at once would interleave into garbage.
+  const write = printQueue.then(() => fs.promises.writeFile(DEVICE_PATH, job));
+  printQueue = write.catch(() => {});
+  await write;
 }
 
 function isReady() {
   return fs.existsSync(DEVICE_PATH);
 }
 
-module.exports = { printPhoto, isReady };
+module.exports = { printPhoto, isReady, ditherForPrint };

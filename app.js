@@ -56,6 +56,9 @@ let touchDistance = 0;
 let toastTimer = null;
 let startTransitionTimer = null;
 
+// Most copies a guest can pick on the Select Copies screen (server.js enforces the same limit).
+const MAX_PRINT_COPIES = 10;
+
 // Blank photo-slot rectangles measured directly from each frame PNG's printed
 // border lines (pixel coordinates in the frame's own native resolution).
 // These are first-pass measurements -- nudge them here if a print run shows
@@ -376,7 +379,7 @@ async function showPrintingComplete() {
 function updatePrintCopiesUI() {
   printCopiesValue.textContent = `${state.printCopies} Print${state.printCopies > 1 ? 's' : ''}`;
   printCopiesMinus.disabled = state.printCopies <= 1;
-  printCopiesPlus.disabled = state.printCopies >= 4;
+  printCopiesPlus.disabled = state.printCopies >= MAX_PRINT_COPIES;
 }
 
 function resetSession() {
@@ -458,7 +461,7 @@ printCopiesMinus.addEventListener('click', () => {
   updatePrintCopiesUI();
 });
 printCopiesPlus.addEventListener('click', () => {
-  if (state.printCopies >= 4) return;
+  if (state.printCopies >= MAX_PRINT_COPIES) return;
   state.printCopies += 1;
   updatePrintCopiesUI();
 });

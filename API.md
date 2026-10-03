@@ -32,7 +32,7 @@ curl -k -X POST https://localhost:3443/api/sessions/SESSION_ID/photo \
   -d '{"photo":"data:image/png;base64,..."}'
 ```
 
-Start a print job (optionally overriding the number of copies; defaults to the session's `printCopies`, 1-4). The response is `202`, then the session changes from `PRINTING` to `DONE`:
+Start a print job (optionally overriding the number of copies; defaults to the session's `printCopies`, 1-10). The response is `202`, then the session changes from `PRINTING` to `DONE`:
 
 ```sh
 curl -k -X POST https://localhost:3443/api/sessions/SESSION_ID/print \
