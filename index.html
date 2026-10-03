@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>Receipt Photo Booth</title>
-  <link rel="stylesheet" href="style.css?v=20261003d">
+  <link rel="stylesheet" href="style.css?v=20261003e">
 </head>
 <body>
   <main class="booth-shell">
@@ -91,6 +91,7 @@
           <h2 class="script-heading scan-heading" id="scanTitle">thank you</h2>
           <p class="script-heading scan-subheading">Scan the QR code to save your photos</p>
         </div>
+        <p class="scan-notice" id="scanNotice" role="alert" hidden>ขออภัย เครื่องพิมพ์มีปัญหา รูปอาจพิมพ์ไม่ออก<br>สแกน QR ด้านล่างเพื่อเก็บรูปของคุณได้เลย</p>
         <div class="qr-row">
           <div class="qr-item">
             <div class="qr-box" id="scanQrBoxColor" aria-hidden="true"></div>
@@ -103,7 +104,7 @@
         </div>
         <button class="pill-button" id="scanContinueButton" type="button">Back to Home</button>
       </div>
-      <p class="script-heading scan-footnote">Don't forget to grab your prints below</p>
+      <p class="script-heading scan-footnote" id="scanFootnote">Don't forget to grab your prints below</p>
     </section>
 
     <section class="screen printing-screen brand-screen" data-screen="printing" aria-labelledby="printingTitle">
@@ -117,6 +118,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
-  <script src="app.js?v=20261003f"></script>
+  <script src="app.js?v=20261003j"></script>
 </body>
 </html>

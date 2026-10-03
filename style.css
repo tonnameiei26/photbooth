@@ -48,6 +48,7 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .scan-heading-group { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
 .scan-heading { font-size: clamp(3rem, 8vh, 5rem); }
 .scan-subheading { font-size: clamp(1.2rem, 2.8vh, 1.6rem); font-weight: 500; }
+.scan-notice { margin: 0; max-width: 34rem; padding: .8rem 1.2rem; border: 1px solid var(--logo-accent); color: var(--logo-accent); font-size: .9rem; line-height: 1.6; }
 .scan-footnote { margin: 0; font-size: clamp(1.1rem, 2.5vh, 1.4rem); }
 .payment-timer, .payment-total { color: #1a1a1a; }
 .stepper { display: flex; align-items: center; gap: 1.5rem; }

@@ -14,20 +14,39 @@ cloudinary.config({
 // the size of the PNG with no visible difference on a phone.
 const JPEG_QUALITY = 92;
 
+// The booth's internet link (a phone hotspot for now) drops out briefly from
+// time to time, so an upload that fails is tried again before giving up.
+// Keep the worst case (every attempt timing out) shorter than QR_WAIT_MS in app.js.
+const UPLOAD_ATTEMPTS = 3;
+const UPLOAD_RETRY_DELAY_MS = 2000;
+const UPLOAD_TIMEOUT_MS = 20000;
+
 function dataUrlToBuffer(dataUrl) {
   return Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 }
 
 // Sends the image bytes as-is. (Passing Cloudinary a data: URL instead would
 // base64-encode them, which makes the upload a third bigger.)
-function uploadImage(buffer, publicId) {
+function uploadImageOnce(buffer, publicId) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'photobooth', public_id: publicId, resource_type: 'image' },
+      { folder: 'photobooth', public_id: publicId, resource_type: 'image', timeout: UPLOAD_TIMEOUT_MS },
       (error, result) => (error ? reject(error) : resolve(result))
     );
     stream.end(buffer);
   });
+}
+
+async function uploadImage(buffer, publicId) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await uploadImageOnce(buffer, publicId);
+    } catch (error) {
+      if (attempt >= UPLOAD_ATTEMPTS) throw error;
+      console.warn(`Upload of ${publicId} failed (attempt ${attempt} of ${UPLOAD_ATTEMPTS}): ${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, UPLOAD_RETRY_DELAY_MS));
+    }
+  }
 }
 
 async function uploadAndGenerateQr(colorDataUrl, sessionId) {

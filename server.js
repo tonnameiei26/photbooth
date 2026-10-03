@@ -18,6 +18,10 @@ const KEY_PATH = path.join(CERT_DIR, 'key.pem');
 
 const sessions = new Map();
 const MAX_PRINT_COPIES = 10; // keep in sync with MAX_PRINT_COPIES in app.js
+// Sessions live in memory (photo included) only while a guest is using the booth.
+// One left untouched this long is forgotten; its row in SQLite stays as history.
+const SESSION_MAX_AGE_MS = 10 * 60 * 1000;
+const SESSION_SWEEP_INTERVAL_MS = 60 * 1000;
 const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SELECT_PRINT_COPIES', 'PRINTING', 'DONE', 'TIMEOUT']);
 
 function createSession() {
@@ -33,6 +37,16 @@ function updateSession(session, changes) {
   db.saveSession(session);
   return session;
 }
+
+function forgetStaleSessions() {
+  const cutoff = Date.now() - SESSION_MAX_AGE_MS;
+  for (const session of sessions.values()) {
+    // A long multi-copy job is still being fed to the printer; leave it alone.
+    if (session.print === 'PROCESSING' || session.uploadStatus === 'PROCESSING') continue;
+    if (Date.parse(session.updatedAt) < cutoff) sessions.delete(session.id);
+  }
+}
+setInterval(forgetStaleSessions, SESSION_SWEEP_INTERVAL_MS).unref();
 
 function requireSession(request, response, next) {
   const session = sessions.get(request.params.id);
@@ -92,16 +106,34 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
     if (!Number.isInteger(payload.printCopies) || payload.printCopies < 1 || payload.printCopies > MAX_PRINT_COPIES) return response.status(400).json({ error: `printCopies must be an integer from 1 to ${MAX_PRINT_COPIES}` });
     printCopies = payload.printCopies;
   }
-  if (!session.photo) return response.status(409).json({ error: 'A photo must be uploaded before printing' });
   if (session.print === 'PROCESSING') return response.status(409).json({ error: 'Print already in progress for this session' });
-  if (!printer.isReady()) return response.status(503).json({ error: 'Printer is not connected' });
-  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING' });
-  printer.printPhoto(session.photo, printCopies, session.frame)
-    .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
-    .catch((error) => updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message }));
-  storage.uploadAndGenerateQr(session.photo, session.id)
+  if (!session.photo) return response.status(409).json({ error: 'A photo must be uploaded before printing' });
+  // The print and upload jobs below each keep their own hold on the photo until
+  // they finish, so the session can let go of it now. Otherwise every guest's
+  // photo would pile up in the Pi's memory, and the iPad would be sent the whole
+  // photo again each time it asks whether the QR codes are ready.
+  const photo = session.photo;
+  // An unplugged or switched-off printer is recorded as a failed print instead of
+  // refusing the whole request, so the guest still gets QR codes for their photo.
+  const printerReady = printer.isReady();
+  const printFailed = (error) => {
+    console.error(`Print failed for session ${session.id}: ${error.message}`);
+    updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message });
+  };
+  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING', photo: null });
+  if (printerReady) {
+    printer.printPhoto(photo, printCopies, session.frame)
+      .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
+      .catch(printFailed);
+  } else {
+    printFailed(new Error('Printer is not connected'));
+  }
+  storage.uploadAndGenerateQr(photo, session.id)
     .then(({ photoUrl, qrCode, photoUrlBw, qrCodeBw }) => updateSession(session, { uploadStatus: 'DONE', photoUrl, qrCode, photoUrlBw, qrCodeBw }))
-    .catch((error) => updateSession(session, { uploadStatus: 'FAILED', uploadError: error.message }));
+    .catch((error) => {
+      console.error(`Upload failed for session ${session.id}: ${error.message}`);
+      updateSession(session, { uploadStatus: 'FAILED', uploadError: error.message });
+    });
   response.status(202).json({ session });
 });
 

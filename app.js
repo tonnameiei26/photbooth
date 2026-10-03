@@ -31,7 +31,8 @@ const state = {
   countdownTimer: null,
   countdownRunning: false,
   serverSessionId: null,
-  serverSessionPromise: null
+  serverSessionPromise: null,
+  qrLoading: false
 };
 
 const screens = [...document.querySelectorAll('[data-screen]')];
@@ -49,15 +50,40 @@ const printCopiesMinus = document.querySelector('#printCopiesMinus');
 const printCopiesPlus = document.querySelector('#printCopiesPlus');
 const scanQrBoxColor = document.querySelector('#scanQrBoxColor');
 const scanQrBoxBw = document.querySelector('#scanQrBoxBw');
+const scanNotice = document.querySelector('#scanNotice');
+const scanFootnote = document.querySelector('#scanFootnote');
 const cameraBackButton = document.querySelector('#cameraBackButton');
 const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
 let touchDistance = 0;
 let toastTimer = null;
 let startTransitionTimer = null;
+let printingTimer = null;
 
 // Most copies a guest can pick on the Select Copies screen (server.js enforces the same limit).
 const MAX_PRINT_COPIES = 10;
+
+// How long each screen waits with no touch before the booth goes back to the
+// start screen, so a guest who walks away does not leave their photo or QR
+// codes on show for the next person. Screens not listed never time out: the
+// start screen is already home, and the printing screen moves on by itself.
+// The QR screen waits longer because guests are busy with their phone there,
+// not with the iPad.
+const IDLE_TIMEOUT_MS = 20000;
+const IDLE_TIMEOUTS = {
+  shots: IDLE_TIMEOUT_MS,
+  camera: IDLE_TIMEOUT_MS,
+  preview: 30000,
+  printcopies: IDLE_TIMEOUT_MS,
+  scan: 60000
+};
+let idleTimer = null;
+
+// Longest the QR screen waits for the photo upload before giving up. The server
+// retries a failed upload (see services/storage.js), so this has to outlast that.
+const QR_WAIT_MS = 70000;
+// How long the QR screen keeps checking whether the print job went through.
+const PRINT_WAIT_MS = 120000;
 
 // Blank photo-slot rectangles measured directly from each frame PNG's printed
 // border lines (pixel coordinates in the frame's own native resolution).
@@ -94,7 +120,7 @@ const FRAME_LAYOUTS = {
   }
 };
 
-async function apiRequest(endpoint, options = {}) {
+async function apiRequest(endpoint, options = {}, { quiet = false } = {}) {
   try {
     const response = await fetch(endpoint, { headers: { 'Content-Type': 'application/json' }, ...options });
     const responseText = await response.text();
@@ -111,7 +137,7 @@ async function apiRequest(endpoint, options = {}) {
     if (!response.ok) throw new Error(payload.error || 'Server request failed');
     return payload;
   } catch (error) {
-    notify(`Server unavailable: ${error.message}`);
+    if (!quiet) notify(`Server unavailable: ${error.message}`);
     return null;
   }
 }
@@ -148,6 +174,28 @@ function showScreen(screenName) {
   screens.forEach((item) => item.classList.toggle('screen--active', item === screen));
   state.screen = screenName;
   if (screenName !== 'camera') stopCamera();
+  restartIdleTimer();
+}
+
+// Moments when the booth itself is working and nobody is expected to touch the
+// screen: the 3-2-1 countdown, sending the print job, and fetching the QR codes.
+function isBoothBusy() {
+  if (state.screen === 'camera') return state.countdownRunning;
+  if (state.screen === 'printcopies') return printCopiesConfirmButton.disabled;
+  if (state.screen === 'scan') return state.qrLoading;
+  return false;
+}
+
+// Called on every touch and every screen change: starts the wait over again.
+function restartIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = null;
+  const timeoutMs = IDLE_TIMEOUTS[state.screen];
+  if (!timeoutMs) return;
+  idleTimer = setTimeout(() => {
+    if (isBoothBusy()) restartIdleTimer();
+    else resetSession();
+  }, timeoutMs);
 }
 
 function startSession() {
@@ -339,6 +387,7 @@ async function capturePhotoStep() {
     const layout = FRAME_LAYOUTS[state.photoCount];
     const slot = layout.slots[state.capturedPhotos.length];
     state.capturedPhotos.push(captureSlotPhoto(slot));
+    restartIdleTimer();
     updateCameraBackButton();
     flashCamera();
     if (state.capturedPhotos.length < state.photoCount) {
@@ -354,15 +403,30 @@ async function capturePhotoStep() {
   }
 }
 
-async function pollForQrCode(sessionId, { attempts = 50, intervalMs = 400 } = {}) {
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const result = await apiRequest(`/api/sessions/${sessionId}`);
-    if (!result) return null;
-    if (result.session.uploadStatus === 'DONE') return { qrCode: result.session.qrCode, qrCodeBw: result.session.qrCodeBw };
-    if (result.session.uploadStatus === 'FAILED') return null;
+// Asks the server about a session again and again until isSettled(session) says
+// the wait is over, then gives back that session. A request that fails (a WiFi
+// hiccup) is simply tried again. Gives back null if time runs out, or if the
+// guest has left this session in the meantime.
+async function pollSession(sessionId, isSettled, { timeoutMs, intervalMs = 400 }) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    // Give up on a request that hangs, so one stuck request cannot use up the whole wait.
+    const options = AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+    const result = await apiRequest(`/api/sessions/${sessionId}`, options, { quiet: true });
+    if (state.serverSessionId !== sessionId) return null;
+    if (result && isSettled(result.session)) return result.session;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
   return null;
+}
+
+// Runs alongside the QR screen: if the print job turns out to have failed, tell
+// the guest instead of leaving them waiting for paper that will not come out.
+async function watchPrintResult(sessionId) {
+  const session = await pollSession(sessionId, (item) => item.print !== 'PROCESSING', { timeoutMs: PRINT_WAIT_MS, intervalMs: 1000 });
+  if (session?.print !== 'FAILED') return;
+  scanNotice.hidden = false;
+  scanFootnote.hidden = true;
 }
 
 function renderQrBox(box, qrCode, altText) {
@@ -373,18 +437,29 @@ function renderQrBox(box, qrCode, altText) {
     qrImage.alt = altText;
     box.appendChild(qrImage);
   } else {
-    box.textContent = 'QR code unavailable. Please ask staff for help.';
+    box.textContent = 'ขออภัย สร้าง QR ไม่สำเร็จ อินเทอร์เน็ตของตู้อาจมีปัญหา';
   }
 }
 
 async function showPrintingComplete() {
+  printingTimer = null;
+  const sessionId = state.serverSessionId;
+  scanNotice.hidden = true;
+  scanFootnote.hidden = false;
   scanQrBoxColor.innerHTML = '';
   scanQrBoxColor.textContent = 'Preparing your QR code...';
   scanQrBoxBw.innerHTML = '';
   scanQrBoxBw.textContent = 'Preparing your QR code...';
+  state.qrLoading = true;
   showScreen('scan');
 
-  const result = state.serverSessionId ? await pollForQrCode(state.serverSessionId) : null;
+  if (sessionId) watchPrintResult(sessionId);
+  const result = sessionId ? await pollSession(sessionId, (item) => item.uploadStatus !== 'PROCESSING', { timeoutMs: QR_WAIT_MS }) : null;
+  // The guest went back to the start screen while the QR codes were loading.
+  if (state.serverSessionId !== sessionId) return;
+  state.qrLoading = false;
+  // Count the idle wait from when the QR codes actually appear.
+  restartIdleTimer();
   renderQrBox(scanQrBoxColor, result?.qrCode, 'Scan to download your color photo');
   renderQrBox(scanQrBoxBw, result?.qrCodeBw, 'Scan to download your black and white photo');
 }
@@ -396,6 +471,8 @@ function updatePrintCopiesUI() {
 }
 
 function resetSession() {
+  clearTimeout(printingTimer);
+  printingTimer = null;
   clearCountdown();
   stopCamera();
   state.screen = 'start';
@@ -406,6 +483,7 @@ function resetSession() {
   state.printCopies = 1;
   state.serverSessionId = null;
   state.serverSessionPromise = null;
+  state.qrLoading = false;
   canvas.width = 0;
   canvas.height = 0;
   preview.removeAttribute('src');
@@ -490,9 +568,11 @@ printCopiesConfirmButton.addEventListener('click', async () => {
       printCopiesConfirmButton.disabled = false;
       return;
     }
+    // Nothing is printing, so skip the "Printing..." screen and go straight to the QR codes.
+    if (result.session.print === 'FAILED') return showPrintingComplete();
   }
   showScreen('printing');
-  setTimeout(showPrintingComplete, 3200);
+  printingTimer = setTimeout(showPrintingComplete, 3200);
 });
 document.querySelector('#printCopiesBackButton').addEventListener('click', () => {
   // Once Confirm has been pressed the print job is already on its way.
@@ -502,4 +582,6 @@ document.querySelector('#printCopiesBackButton').addEventListener('click', () =>
 });
 document.querySelector('#scanContinueButton').addEventListener('click', resetSession);
 document.querySelector('#resetButton').addEventListener('click', resetSession);
+document.addEventListener('pointerdown', restartIdleTimer, { capture: true, passive: true });
+document.addEventListener('keydown', restartIdleTimer, { capture: true });
 window.addEventListener('pagehide', () => { clearCountdown(); stopCamera(); });
