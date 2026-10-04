@@ -55,7 +55,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .stepper-arrow { font-family: var(--script); font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1; background: none; padding: .25rem .5rem; }
 .stepper-arrow:disabled { opacity: .3; cursor: default; }
 .stepper-pill { min-width: 8rem; }
-.camera-stage { position: relative; width: min(100%, 26rem); aspect-ratio: 4 / 5; overflow: hidden; background: #c7d0d6; border: 1px solid #1a1a1a; border-radius: .4rem; }
+/* --stage-ratio (width / height of the chosen frame's photo slot) is set by
+   updateCameraFraming() in app.js. The box never grows taller than a 4:5 box
+   of --stage-width, so tall slots get narrower instead of running off screen. */
+.camera-stage { --stage-width: min(100%, 26rem); position: relative; width: min(var(--stage-width), calc(var(--stage-width) * 1.25 * var(--stage-ratio, .8))); aspect-ratio: var(--stage-ratio, .8); overflow: hidden; background: #c7d0d6; border: 1px solid #1a1a1a; border-radius: .4rem; }
 #webcamVideo { width: 100%; height: 100%; display: block; object-fit: cover; transform: scaleX(-1) scale(var(--camera-zoom, 1)); filter: brightness(var(--camera-brightness, 1)); }
 .countdown { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-family: var(--script); font-size: clamp(5rem, 14vw, 8rem); text-shadow: 0 2px 20px rgba(0,0,0,.4); }
 .camera-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 450ms ease-out; }
@@ -82,12 +85,12 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 @media (min-width: 701px) and (max-width: 1100px) {
 	.screen { padding-inline: clamp(2rem, 6vw, 4.5rem); }
 	.selection-summary, .status-message { font-size: .82rem; }
-	.camera-stage { width: min(100%, 30rem); }
+	.camera-stage { --stage-width: min(100%, 30rem); }
 }
 @media (max-width: 700px) {
 	.screen { padding: 5.5rem 1.25rem 1.5rem; }
 	.shot-grid { gap: 1.5rem 1rem; }
-	.camera-stage { width: min(100%, 22rem); max-height: 58svh; }
+	.camera-stage { --stage-width: min(100%, 22rem, 46svh); }
 }
 @media (pointer: coarse) and (min-width: 701px) and (max-width: 1366px) {
 	/* White so that if a sliver of page ever shows past the shell it blends in
@@ -105,7 +108,7 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 @media (orientation: portrait) and (pointer: coarse) and (min-width: 701px) {
 	.screen { padding-inline: clamp(2rem, 7vw, 5rem); }
 	.screen[data-screen='shots'] .shot-grid { gap: 2rem; }
-	.camera-stage { width: min(72vw, 30rem); }
+	.camera-stage { --stage-width: min(72vw, 30rem); }
 }
 /* Primary target device: iPad 11" portrait, 820x1180 CSS px (also covers the
    810x1080 10th-gen and 834x1194 Pro 11 logical sizes in the same class).
@@ -119,6 +122,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 	.brand-screen { padding-block: clamp(1.25rem, 2.75vh, 2rem); gap: clamp(.85rem, 2vh, 1.25rem); }
 	.screen[data-screen='shots'] .script-heading { font-size: clamp(1.6rem, 4vw, 2.4rem); }
 	.screen[data-screen='shots'] .shot-grid { max-width: 34rem; gap: 1.25rem clamp(1.25rem, 3.5vw, 2.25rem); }
-	.camera-stage { width: min(68vw, 32rem); }
+	.camera-stage { --stage-width: min(68vw, 32rem); }
 	.qr-box { width: min(60vw, 28rem); }
 }

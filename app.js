@@ -1,4 +1,6 @@
 const CAMERA_ZOOM = 1.6;
+// CAMERA_ZOOM is measured against a 4:5 portrait view of the camera (see drawCover).
+const CAMERA_PREVIEW_RATIO = 4 / 5;
 const CAMERA_BRIGHTNESS = 1;
 document.documentElement.style.setProperty('--camera-zoom', CAMERA_ZOOM);
 document.documentElement.style.setProperty('--camera-brightness', CAMERA_BRIGHTNESS);
@@ -37,6 +39,7 @@ const state = {
 
 const screens = [...document.querySelectorAll('[data-screen]')];
 const video = document.querySelector('#webcamVideo');
+const cameraStage = document.querySelector('.camera-stage');
 const canvas = document.querySelector('#photoCanvas');
 const preview = document.querySelector('#photoPreview');
 const countdown = document.querySelector('#countdown');
@@ -268,6 +271,7 @@ function selectShotCount(photoCount) {
 function confirmShotSelection() {
   if (!state.photoCount) return notify('Choose how many shots first.');
   syncServerSession({ photoCount: state.photoCount, frame: state.frame, state: 'SELECT_SHOTS' });
+  updateCameraFraming();
   showScreen('camera');
   initCamera();
 }
@@ -299,29 +303,39 @@ function startCountdown() {
   state.countdownTimer = setInterval(tick, 1000);
 }
 
+// Works out which part of the camera picture goes into one photo slot.
+// Step 1 takes a 4:5 portrait view of the camera, zoomed in by CAMERA_ZOOM.
+// Step 2 trims that view to the slot's shape. Both the live camera box
+// (updateCameraFraming) and the saved photo (captureSlotPhoto) use this, so
+// the print matches what the guest saw.
 function drawCover(source, targetWidth, targetHeight, zoom = 1) {
-  const sourceRatio = source.videoWidth / source.videoHeight;
+  let sourceWidth = Math.min(source.videoWidth, source.videoHeight * CAMERA_PREVIEW_RATIO) / zoom;
+  let sourceHeight = sourceWidth / CAMERA_PREVIEW_RATIO;
   const targetRatio = targetWidth / targetHeight;
-  let sourceWidth = source.videoWidth;
-  let sourceHeight = source.videoHeight;
-  let sourceX = 0;
-  let sourceY = 0;
-  if (sourceRatio > targetRatio) {
-    sourceWidth = source.videoHeight * targetRatio;
-    sourceX = (source.videoWidth - sourceWidth) / 2;
+  if (targetRatio > CAMERA_PREVIEW_RATIO) {
+    sourceHeight = sourceWidth / targetRatio;
   } else {
-    sourceHeight = source.videoWidth / targetRatio;
-    sourceY = (source.videoHeight - sourceHeight) / 2;
+    sourceWidth = sourceHeight * targetRatio;
   }
-  if (zoom > 1) {
-    const zoomedWidth = sourceWidth / zoom;
-    const zoomedHeight = sourceHeight / zoom;
-    sourceX += (sourceWidth - zoomedWidth) / 2;
-    sourceY += (sourceHeight - zoomedHeight) / 2;
-    sourceWidth = zoomedWidth;
-    sourceHeight = zoomedHeight;
-  }
+  const sourceX = (source.videoWidth - sourceWidth) / 2;
+  const sourceY = (source.videoHeight - sourceHeight) / 2;
   return { sourceX, sourceY, sourceWidth, sourceHeight };
+}
+
+// Shapes the live camera box like the photo slot of the chosen frame and zooms
+// the video so the box shows exactly the area drawCover() will save.
+function updateCameraFraming() {
+  const layout = FRAME_LAYOUTS[state.photoCount];
+  if (!layout) return;
+  const slot = layout.slots[0];
+  const slotRatio = slot.width / slot.height;
+  cameraStage.style.setProperty('--stage-ratio', slotRatio);
+  if (!video.videoWidth) return;
+  // object-fit: cover already fills the box; this is how much of the camera's
+  // width it shows before any zoom.
+  const coverWidth = Math.min(video.videoWidth, video.videoHeight * slotRatio);
+  const crop = drawCover(video, slot.width, slot.height, CAMERA_ZOOM);
+  document.documentElement.style.setProperty('--camera-zoom', coverWidth / crop.sourceWidth);
 }
 
 function flashCamera() {
@@ -533,6 +547,9 @@ cameraBackButton.addEventListener('click', () => {
   showScreen('shots');
 });
 document.querySelector('#captureButton').addEventListener('click', startCountdown);
+// The camera's picture size is only known once the video starts, and changes if the iPad is rotated.
+video.addEventListener('loadedmetadata', updateCameraFraming);
+video.addEventListener('resize', updateCameraFraming);
 document.querySelector('#retakeButton').addEventListener('click', () => {
   state.capturedPhotos = [];
   showScreen('camera');
