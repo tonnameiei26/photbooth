@@ -22,11 +22,15 @@ const MAX_PRINT_COPIES = 10; // keep in sync with MAX_PRINT_COPIES in app.js
 // One left untouched this long is forgotten; its row in SQLite stays as history.
 const SESSION_MAX_AGE_MS = 10 * 60 * 1000;
 const SESSION_SWEEP_INTERVAL_MS = 60 * 1000;
+// Experimental: a short behind-the-scenes video of the countdown, offered as a
+// third QR code. Off unless VIDEO_CLIP=true is set in .env.
+const VIDEO_CLIP_ENABLED = process.env.VIDEO_CLIP === 'true';
+const CLIP_MAX_SIZE = '20mb';
 const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SELECT_PRINT_COPIES', 'PRINTING', 'DONE', 'TIMEOUT']);
 
 function createSession() {
   const now = new Date().toISOString();
-  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, photoUrlBw: null, qrCodeBw: null, createdAt: now, updatedAt: now };
+  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, photoUrlBw: null, qrCodeBw: null, clipStatus: 'NOT_STARTED', clipUrl: null, qrCodeClip: null, createdAt: now, updatedAt: now };
   sessions.set(session.id, session);
   db.saveSession(session);
   return session;
@@ -42,7 +46,7 @@ function forgetStaleSessions() {
   const cutoff = Date.now() - SESSION_MAX_AGE_MS;
   for (const session of sessions.values()) {
     // A long multi-copy job is still being fed to the printer; leave it alone.
-    if (session.print === 'PROCESSING' || session.uploadStatus === 'PROCESSING') continue;
+    if (session.print === 'PROCESSING' || session.uploadStatus === 'PROCESSING' || session.clipStatus === 'PROCESSING') continue;
     if (Date.parse(session.updatedAt) < cutoff) sessions.delete(session.id);
   }
 }
@@ -64,6 +68,10 @@ const app = express();
 app.use(express.json({ limit: '15mb' }));
 
 const api = express.Router();
+
+api.get('/config', (request, response) => {
+  response.json({ videoClip: VIDEO_CLIP_ENABLED });
+});
 
 api.post('/sessions', (request, response) => {
   response.status(201).json({ session: createSession() });
@@ -133,6 +141,23 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
     .catch((error) => {
       console.error(`Upload failed for session ${session.id}: ${error.message}`);
       updateSession(session, { uploadStatus: 'FAILED', uploadError: error.message });
+    });
+  response.status(202).json({ session });
+});
+
+// The iPad sends the clip as the raw video file (not JSON) once the guest has
+// confirmed their photo. It is only held in memory while it uploads.
+api.post('/sessions/:id/clip', requireSession, express.raw({ type: 'video/*', limit: CLIP_MAX_SIZE }), (request, response) => {
+  const session = request.session;
+  if (!VIDEO_CLIP_ENABLED) return response.status(404).json({ error: 'Video clips are switched off' });
+  if (!Buffer.isBuffer(request.body) || request.body.length === 0) return response.status(400).json({ error: 'Clip must be sent as a video file' });
+  if (session.clipStatus !== 'NOT_STARTED') return response.status(409).json({ error: 'A clip was already sent for this session' });
+  updateSession(session, { clipStatus: 'PROCESSING' });
+  storage.uploadClipAndGenerateQr(request.body, session.id)
+    .then(({ clipUrl, qrCodeClip }) => updateSession(session, { clipStatus: 'DONE', clipUrl, qrCodeClip }))
+    .catch((error) => {
+      console.error(`Clip upload failed for session ${session.id}: ${error.message}`);
+      updateSession(session, { clipStatus: 'FAILED', clipError: error.message });
     });
   response.status(202).json({ session });
 });

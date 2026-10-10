@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>Receipt Photo Booth</title>
-  <link rel="stylesheet" href="style.css?v=20261004c">
+  <link rel="stylesheet" href="style.css?v=20261011d">
 </head>
 <body>
   <main class="booth-shell">
@@ -92,7 +92,7 @@
           <p class="script-heading scan-subheading">Scan the QR code to save your photos</p>
         </div>
         <p class="scan-notice" id="scanNotice" role="alert" hidden>ขออภัย เครื่องพิมพ์มีปัญหา รูปอาจพิมพ์ไม่ออก<br>สแกน QR ด้านล่างเพื่อเก็บรูปของคุณได้เลย</p>
-        <div class="qr-row">
+        <div class="qr-row" id="scanQrRow">
           <div class="qr-item">
             <div class="qr-box" id="scanQrBoxColor" aria-hidden="true"></div>
             <p class="qr-label">Color</p>
@@ -101,8 +101,15 @@
             <div class="qr-box" id="scanQrBoxBw" aria-hidden="true"></div>
             <p class="qr-label">Black &amp; White</p>
           </div>
+          <div class="qr-item" id="scanQrItemClip" hidden>
+            <div class="qr-box" id="scanQrBoxClip" aria-hidden="true"></div>
+            <p class="qr-label">Video</p>
+          </div>
         </div>
-        <button class="pill-button" id="scanContinueButton" type="button">Back to Home</button>
+        <div class="scan-actions">
+          <button class="pill-button" id="scanContinueButton" type="button">Back to Home</button>
+          <p class="scan-countdown" id="scanCountdown" hidden></p>
+        </div>
       </div>
       <p class="script-heading scan-footnote" id="scanFootnote">Don't forget to grab your prints below</p>
     </section>
@@ -118,6 +125,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
-  <script src="app.js?v=20261004c"></script>
+  <script src="app.js?v=20261011d"></script>
 </body>
 </html>

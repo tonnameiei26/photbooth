@@ -34,7 +34,9 @@ const state = {
   countdownRunning: false,
   serverSessionId: null,
   serverSessionPromise: null,
-  qrLoading: false
+  qrLoading: false,
+  clip: null,
+  clipUpload: null
 };
 
 const screens = [...document.querySelectorAll('[data-screen]')];
@@ -55,6 +57,10 @@ const scanQrBoxColor = document.querySelector('#scanQrBoxColor');
 const scanQrBoxBw = document.querySelector('#scanQrBoxBw');
 const scanNotice = document.querySelector('#scanNotice');
 const scanFootnote = document.querySelector('#scanFootnote');
+const scanCountdown = document.querySelector('#scanCountdown');
+const scanQrRow = document.querySelector('#scanQrRow');
+const scanQrItemClip = document.querySelector('#scanQrItemClip');
+const scanQrBoxClip = document.querySelector('#scanQrBoxClip');
 const cameraBackButton = document.querySelector('#cameraBackButton');
 const previewWraps = document.querySelectorAll('.photo-preview-wrap');
 let touchStartY = null;
@@ -71,7 +77,7 @@ const MAX_PRINT_COPIES = 10;
 // codes on show for the next person. Screens not listed never time out: the
 // start screen is already home, and the printing screen moves on by itself.
 // The QR screen waits longer because guests are busy with their phone there,
-// not with the iPad.
+// not with the iPad, and it shows the time left (see updateScanCountdown).
 const IDLE_TIMEOUT_MS = 20000;
 const IDLE_TIMEOUTS = {
   shots: IDLE_TIMEOUT_MS,
@@ -81,12 +87,27 @@ const IDLE_TIMEOUTS = {
   scan: 60000
 };
 let idleTimer = null;
+let idleDeadline = 0;
+let scanCountdownTimer = null;
 
 // Longest the QR screen waits for the photo upload before giving up. The server
 // retries a failed upload (see services/storage.js), so this has to outlast that.
 const QR_WAIT_MS = 70000;
 // How long the QR screen keeps checking whether the print job went through.
 const PRINT_WAIT_MS = 120000;
+
+// Experimental behind-the-scenes clip: a short video of the guest during the
+// 3-2-1 countdowns, offered as a third QR code. Only when the server has
+// VIDEO_CLIP=true in its .env; otherwise nothing below ever records.
+// The longest clip kept (4 shots take about 15 seconds).
+const CLIP_MAX_MS = 20000;
+// Keeps the file small enough to upload quickly: about 1 MB per 5 seconds.
+const CLIP_BITS_PER_SECOND = 1500000;
+// Longest the QR screen waits for the clip's QR code.
+const CLIP_WAIT_MS = 90000;
+let clipEnabled = false;
+let clipRecorder = null;
+let clipStopTimer = null;
 
 // Blank photo-slot rectangles measured directly from each frame PNG's printed
 // border lines (pixel coordinates in the frame's own native resolution).
@@ -194,11 +215,30 @@ function restartIdleTimer() {
   clearTimeout(idleTimer);
   idleTimer = null;
   const timeoutMs = IDLE_TIMEOUTS[state.screen];
-  if (!timeoutMs) return;
-  idleTimer = setTimeout(() => {
-    if (isBoothBusy()) restartIdleTimer();
-    else resetSession();
-  }, timeoutMs);
+  if (timeoutMs) {
+    idleDeadline = Date.now() + timeoutMs;
+    idleTimer = setTimeout(() => {
+      if (isBoothBusy()) restartIdleTimer();
+      else resetSession();
+    }, timeoutMs);
+  }
+  updateScanCountdown();
+}
+
+// Shows guests on the QR screen how long is left before the booth goes back to
+// the start screen by itself. Hidden while the QR codes are still loading,
+// because the wait only starts counting once they are on show.
+function updateScanCountdown() {
+  const counting = state.screen === 'scan' && !state.qrLoading && idleTimer !== null;
+  scanCountdown.hidden = !counting;
+  if (!counting) {
+    clearInterval(scanCountdownTimer);
+    scanCountdownTimer = null;
+    return;
+  }
+  const secondsLeft = Math.max(0, Math.ceil((idleDeadline - Date.now()) / 1000));
+  scanCountdown.textContent = `Returning to home in ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
+  if (!scanCountdownTimer) scanCountdownTimer = setInterval(updateScanCountdown, 250);
 }
 
 function startSession() {
@@ -276,6 +316,60 @@ function confirmShotSelection() {
   initCamera();
 }
 
+// Starts filming the camera when the first countdown begins. The clip is a
+// bonus: if the browser cannot record, the photo carries on without it.
+function startClipRecording() {
+  discardClip();
+  if (!clipEnabled || !window.MediaRecorder || !state.cameraStream) return;
+  // iPad Safari records MP4; the WebM fallback is for testing in other browsers.
+  const mimeType = ['video/mp4', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
+  if (!mimeType) return;
+  try {
+    const recorder = new MediaRecorder(state.cameraStream, { mimeType, videoBitsPerSecond: CLIP_BITS_PER_SECOND });
+    const chunks = [];
+    recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+      // discardClip() lets go of the recorder first, so a thrown-away recording stops here.
+      if (clipRecorder !== recorder) return;
+      clipRecorder = null;
+      state.clip = chunks.length ? new Blob(chunks, { type: recorder.mimeType || mimeType }) : null;
+    };
+    recorder.start();
+    clipRecorder = recorder;
+    clipStopTimer = setTimeout(stopClipRecording, CLIP_MAX_MS);
+  } catch (error) {
+    clipRecorder = null;
+  }
+}
+
+// Ends the recording and keeps it (it lands in state.clip a moment later).
+function stopClipRecording() {
+  clearTimeout(clipStopTimer);
+  clipStopTimer = null;
+  if (clipRecorder && clipRecorder.state !== 'inactive') clipRecorder.stop();
+}
+
+// Ends any recording and throws it away, along with a clip already kept.
+function discardClip() {
+  const recorder = clipRecorder;
+  clipRecorder = null;
+  clearTimeout(clipStopTimer);
+  clipStopTimer = null;
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  state.clip = null;
+}
+
+// Hands the kept clip to the server once the guest has confirmed their photo.
+// state.clipUpload settles to true when the server has taken it.
+function sendClip(sessionId) {
+  const clip = state.clip;
+  state.clip = null;
+  if (!clip || !sessionId) return;
+  state.clipUpload = fetch(`/api/sessions/${sessionId}/clip`, { method: 'POST', headers: { 'Content-Type': clip.type || 'video/mp4' }, body: clip })
+    .then((response) => response.ok)
+    .catch(() => false);
+}
+
 function clearCountdown() {
   if (state.countdownTimer) clearInterval(state.countdownTimer);
   state.countdownTimer = null;
@@ -287,6 +381,7 @@ function clearCountdown() {
 function startCountdown() {
   if (state.countdownRunning || !state.cameraStream) return;
   state.countdownRunning = true;
+  if (state.capturedPhotos.length === 0) startClipRecording();
   updateCameraBackButton();
   const moments = ['3', '2', '1'];
   let index = 0;
@@ -409,6 +504,7 @@ async function capturePhotoStep() {
       setTimeout(startCountdown, 700);
       return;
     }
+    stopClipRecording();
     await composeFinalPhoto();
     stopCamera();
     showScreen('preview');
@@ -455,6 +551,15 @@ function renderQrBox(box, qrCode, altText) {
   }
 }
 
+// Runs alongside the QR screen: the clip is bigger than the photos and takes
+// longer to upload, so its QR code turns up by itself without holding theirs back.
+async function showClipQr(sessionId, clipUpload) {
+  const accepted = await clipUpload;
+  const session = accepted ? await pollSession(sessionId, (item) => item.clipStatus !== 'PROCESSING', { timeoutMs: CLIP_WAIT_MS, intervalMs: 1000 }) : null;
+  if (state.serverSessionId !== sessionId) return;
+  renderQrBox(scanQrBoxClip, session?.qrCodeClip, 'Scan to download your video');
+}
+
 async function showPrintingComplete() {
   printingTimer = null;
   const sessionId = state.serverSessionId;
@@ -464,9 +569,15 @@ async function showPrintingComplete() {
   scanQrBoxColor.textContent = 'Preparing your QR code...';
   scanQrBoxBw.innerHTML = '';
   scanQrBoxBw.textContent = 'Preparing your QR code...';
+  const clipUpload = sessionId ? state.clipUpload : null;
+  scanQrItemClip.hidden = !clipUpload;
+  scanQrRow.classList.toggle('qr-row--three', Boolean(clipUpload));
+  scanQrBoxClip.innerHTML = '';
+  scanQrBoxClip.textContent = 'Preparing your video...';
   state.qrLoading = true;
   showScreen('scan');
 
+  if (clipUpload) showClipQr(sessionId, clipUpload);
   if (sessionId) watchPrintResult(sessionId);
   const result = sessionId ? await pollSession(sessionId, (item) => item.uploadStatus !== 'PROCESSING', { timeoutMs: QR_WAIT_MS }) : null;
   // The guest went back to the start screen while the QR codes were loading.
@@ -498,6 +609,8 @@ function resetSession() {
   state.serverSessionId = null;
   state.serverSessionPromise = null;
   state.qrLoading = false;
+  discardClip();
+  state.clipUpload = null;
   canvas.width = 0;
   canvas.height = 0;
   preview.removeAttribute('src');
@@ -585,6 +698,7 @@ printCopiesConfirmButton.addEventListener('click', async () => {
       printCopiesConfirmButton.disabled = false;
       return;
     }
+    sendClip(state.serverSessionId);
     // Nothing is printing, so skip the "Printing..." screen and go straight to the QR codes.
     if (result.session.print === 'FAILED') return showPrintingComplete();
   }
@@ -602,3 +716,4 @@ document.querySelector('#resetButton').addEventListener('click', resetSession);
 document.addEventListener('pointerdown', restartIdleTimer, { capture: true, passive: true });
 document.addEventListener('keydown', restartIdleTimer, { capture: true });
 window.addEventListener('pagehide', () => { clearCountdown(); stopCamera(); });
+apiRequest('/api/config', {}, { quiet: true }).then((config) => { clipEnabled = Boolean(config?.videoClip); });

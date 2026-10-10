@@ -1,3 +1,4 @@
+const https = require('https');
 const cloudinary = require('cloudinary').v2;
 const QRCode = require('qrcode');
 const sharp = require('sharp');
@@ -20,27 +21,35 @@ const JPEG_QUALITY = 92;
 const UPLOAD_ATTEMPTS = 3;
 const UPLOAD_RETRY_DELAY_MS = 2000;
 const UPLOAD_TIMEOUT_MS = 20000;
+// The behind-the-scenes clip is a few times bigger than the photos, so it gets longer.
+const CLIP_UPLOAD_TIMEOUT_MS = 45000;
+
+// Uploads look up Cloudinary's address as IPv4 only. Asking for an IPv6 address
+// as well (the default) makes every upload wait about 15 seconds on the booth's
+// TP-Link router, which never answers that question for Cloudinary's upload
+// server, and guests would wait that much longer for their QR codes.
+const uploadAgent = new https.Agent({ family: 4 });
 
 function dataUrlToBuffer(dataUrl) {
   return Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 }
 
-// Sends the image bytes as-is. (Passing Cloudinary a data: URL instead would
+// Sends the file's bytes as-is. (Passing Cloudinary a data: URL instead would
 // base64-encode them, which makes the upload a third bigger.)
-function uploadImageOnce(buffer, publicId) {
+function uploadOnce(buffer, publicId, resourceType, timeoutMs) {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: 'photobooth', public_id: publicId, resource_type: 'image', timeout: UPLOAD_TIMEOUT_MS },
+      { folder: 'photobooth', public_id: publicId, resource_type: resourceType, timeout: timeoutMs, agent: uploadAgent },
       (error, result) => (error ? reject(error) : resolve(result))
     );
     stream.end(buffer);
   });
 }
 
-async function uploadImage(buffer, publicId) {
+async function uploadImage(buffer, publicId, resourceType = 'image', timeoutMs = UPLOAD_TIMEOUT_MS) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await uploadImageOnce(buffer, publicId);
+      return await uploadOnce(buffer, publicId, resourceType, timeoutMs);
     } catch (error) {
       if (attempt >= UPLOAD_ATTEMPTS) throw error;
       console.warn(`Upload of ${publicId} failed (attempt ${attempt} of ${UPLOAD_ATTEMPTS}): ${error.message}`);
@@ -72,4 +81,17 @@ async function uploadAndGenerateQr(colorDataUrl, sessionId) {
   return { photoUrl: colorUpload.secure_url, qrCode, photoUrlBw: bwUpload.secure_url, qrCodeBw };
 }
 
-module.exports = { uploadAndGenerateQr };
+// The clip is stored exactly as the iPad recorded it and the QR code points at
+// that original file: asking Cloudinary to convert or resize video costs far
+// more of the plan's credits than storing it does.
+async function uploadClipAndGenerateQr(clipBuffer, sessionId) {
+  const upload = await uploadImage(clipBuffer, `${sessionId}-clip`, 'video', CLIP_UPLOAD_TIMEOUT_MS);
+  // A phone that opens a video link just plays it, with no way to keep it
+  // (unlike a photo, which can be long-pressed and saved). The "attachment"
+  // flag makes the same file arrive as a download instead.
+  const downloadUrl = cloudinary.url(upload.public_id, { resource_type: 'video', secure: true, version: upload.version, format: upload.format, flags: 'attachment:snaplicious-video' });
+  const qrCodeClip = await QRCode.toDataURL(downloadUrl, { margin: 1, width: 512 });
+  return { clipUrl: downloadUrl, qrCodeClip };
+}
+
+module.exports = { uploadAndGenerateQr, uploadClipAndGenerateQr };
