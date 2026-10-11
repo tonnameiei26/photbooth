@@ -70,7 +70,7 @@ let startTransitionTimer = null;
 let printingTimer = null;
 
 // Most copies a guest can pick on the Select Copies screen (server.js enforces the same limit).
-const MAX_PRINT_COPIES = 10;
+const MAX_PRINT_COPIES = 6;
 
 // How long each screen waits with no touch before the booth goes back to the
 // start screen, so a guest who walks away does not leave their photo or QR
@@ -84,7 +84,7 @@ const IDLE_TIMEOUTS = {
   camera: IDLE_TIMEOUT_MS,
   preview: 30000,
   printcopies: IDLE_TIMEOUT_MS,
-  scan: 60000
+  scan: 90000
 };
 let idleTimer = null;
 let idleDeadline = 0;
@@ -97,7 +97,7 @@ const QR_WAIT_MS = 70000;
 const PRINT_WAIT_MS = 120000;
 
 // Experimental behind-the-scenes clip: a short video of the guest during the
-// 3-2-1 countdowns, offered as a third QR code. Only when the server has
+// 5-second countdowns, offered as a third QR code. Only when the server has
 // VIDEO_CLIP=true in its .env; otherwise nothing below ever records.
 // The longest clip kept (4 shots take about 15 seconds).
 const CLIP_MAX_MS = 20000;
@@ -202,7 +202,7 @@ function showScreen(screenName) {
 }
 
 // Moments when the booth itself is working and nobody is expected to touch the
-// screen: the 3-2-1 countdown, sending the print job, and fetching the QR codes.
+// screen: the 5-second countdown, sending the print job, and fetching the QR codes.
 function isBoothBusy() {
   if (state.screen === 'camera') return state.countdownRunning;
   if (state.screen === 'printcopies') return printCopiesConfirmButton.disabled;
@@ -383,7 +383,7 @@ function startCountdown() {
   state.countdownRunning = true;
   if (state.capturedPhotos.length === 0) startClipRecording();
   updateCameraBackButton();
-  const moments = ['3', '2', '1'];
+  const moments = ['5', '4', '3', '2', '1'];
   let index = 0;
   const tick = () => {
     countdown.textContent = moments[index] || '';

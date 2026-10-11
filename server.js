@@ -17,7 +17,7 @@ const CERT_PATH = path.join(CERT_DIR, 'cert.pem');
 const KEY_PATH = path.join(CERT_DIR, 'key.pem');
 
 const sessions = new Map();
-const MAX_PRINT_COPIES = 10; // keep in sync with MAX_PRINT_COPIES in app.js
+const MAX_PRINT_COPIES = 6; // keep in sync with MAX_PRINT_COPIES in app.js
 // Sessions live in memory (photo included) only while a guest is using the booth.
 // One left untouched this long is forgotten; its row in SQLite stays as history.
 const SESSION_MAX_AGE_MS = 10 * 60 * 1000;
