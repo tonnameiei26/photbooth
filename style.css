@@ -21,9 +21,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 /* Back buttons mirror the Next button: same corner distance, left side. */
 .corner-button--left { right: auto; left: clamp(1.5rem, 4vw, 3rem); }
 
-/* Start screen is one full-bleed design image (assets/first.png), sized to
-   the exact 2x-scale of the 820x1180 iPad target (1640x2360) so it fills
-   the screen with zero cropping there. Tap/drag-up handlers in app.js are
+/* Start screen is one full-bleed design image (assets/start-km-tax.jpg;
+   the original Snaplicious one is assets/first.png), drawn in the same
+   proportions as the 820x1180 iPad target so it fills the screen with
+   zero cropping there. Tap/drag-up handlers in app.js are
    bound to this section element regardless of what's inside it. */
 .start-hero-screen { padding: 0; }
 .start-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
