@@ -35,22 +35,37 @@ const TONE_LUT = buildToneLut(TONE_CURVE);
 // so lettering comes out dark with clean edges. Only the photo slots (the
 // transparent holes in the frame PNG) go through the photo tone steps.
 const FRAME_INK_THRESHOLD = 170;
+// Colourful frame artwork (such as a light green logo) also prints solid black,
+// however light it is, so a logo keeps its whole shape instead of losing its
+// pale parts. A pixel counts as colourful when its strongest and weakest colour
+// channels differ by more than this; greys, black and white never do.
+const FRAME_COLOUR_THRESHOLD = 60;
 const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 
-// Returns one byte per print dot: 255 where the frame PNG covers the paper,
-// 0 inside the photo slots. Null if the frame is missing or does not line up.
+// Returns one byte per print dot: 0 inside the photo slots, FRAME_PLAIN where
+// the frame PNG covers the paper, FRAME_COLOUR where that frame pixel is
+// colourful. Null if the frame is missing or does not line up.
+const FRAME_PLAIN = 1;
+const FRAME_COLOUR = 2;
 async function loadFrameMask(framePath, width, height) {
   if (!framePath) return null;
   const resolved = path.resolve(ASSETS_DIR, '..', framePath);
   if (!resolved.startsWith(ASSETS_DIR + path.sep) || !fs.existsSync(resolved)) return null;
   const { data, info } = await sharp(resolved)
     .ensureAlpha()
-    .extractChannel('alpha')
     .rotate(ROTATE_180 ? 180 : 0)
     .resize({ width: PRINT_WIDTH_DOTS })
     .raw()
     .toBuffer({ resolveWithObject: true });
-  return info.width === width && info.height === height ? data : null;
+  if (info.width !== width || info.height !== height) return null;
+  const mask = Buffer.alloc(width * height);
+  for (let index = 0; index < mask.length; index++) {
+    const [red, green, blue, alpha] = data.subarray(index * 4, index * 4 + 4);
+    if (alpha < 128) continue;
+    const colourful = Math.max(red, green, blue) - Math.min(red, green, blue) > FRAME_COLOUR_THRESHOLD;
+    mask[index] = colourful ? FRAME_COLOUR : FRAME_PLAIN;
+  }
+  return mask;
 }
 
 const ESC_INIT = Buffer.from([0x1b, 0x40]);
@@ -121,7 +136,8 @@ async function ditherForPrint(dataUrl, framePath) {
   const frameMask = await loadFrameMask(framePath, width, height);
   if (frameMask) {
     for (let index = 0; index < data.length; index++) {
-      if (frameMask[index] >= 128) data[index] = untouched[index] < FRAME_INK_THRESHOLD ? 0 : 255;
+      if (frameMask[index] === FRAME_COLOUR) data[index] = 0;
+      else if (frameMask[index] === FRAME_PLAIN) data[index] = untouched[index] < FRAME_INK_THRESHOLD ? 0 : 255;
     }
   }
   const dithered = floydSteinbergDither(data, width, height);

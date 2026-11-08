@@ -30,11 +30,17 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .start-hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 .shots-screen { height: 100dvh; overflow: hidden; }
-.shot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: center; align-items: start; gap: 2rem clamp(1.5rem, 4vw, 3rem); width: 100%; max-width: 40rem; }
-.shot-option { display: flex; flex-direction: column; align-items: center; gap: .9rem; padding: 0; border: 0; background: transparent; text-align: center; }
-.shot-option-thumb { display: block; width: clamp(6rem, 12vh, 10rem); height: auto; overflow: hidden; border: 1px solid #1a1a1a; border-radius: .4rem; background: #fff; transition: border-color .2s, transform .2s; }
-.shot-option-thumb img { display: block; width: 100%; height: auto; object-fit: contain; }
-.shot-option.selected .shot-option-thumb { border-color: var(--logo-accent); border-width: 2px; transform: translateY(-.3rem); }
+/* Two choices, shown as tall receipts side by side. The thumbs are sized by
+   height (both share it, so the receipts line up even though the 2-shot one is
+   narrower) and kept small enough to leave room for the logo, heading and the
+   Back / Next buttons on the 820x1180 iPad. */
+.shot-grid { display: flex; justify-content: center; align-items: flex-end; gap: clamp(2rem, 7vw, 4.5rem); width: 100%; }
+.shot-option { display: flex; flex-direction: column; align-items: center; gap: 1.1rem; padding: 0; border: 0; background: transparent; text-align: center; }
+.shot-option-thumb { display: block; height: min(50vh, 40rem); overflow: hidden; border: 2px solid transparent; border-radius: .5rem; background: #fff; box-shadow: 0 .6rem 1.8rem rgba(0, 0, 0, .14); transition: border-color .2s, transform .2s, box-shadow .2s; }
+.shot-option-thumb img { display: block; width: auto; height: 100%; }
+.shot-option.selected .shot-option-thumb { border-color: var(--logo-accent); transform: translateY(-.5rem); box-shadow: 0 1rem 2.4rem rgba(0, 0, 0, .2); }
+/* Logo and heading sit a little higher than the centred layout puts them. */
+.shots-screen .brand-logo, .shots-screen .script-heading { position: relative; top: -1rem; }
 .shot-option b { font-family: var(--script); font-weight: 600; font-size: clamp(1.2rem, 2.8vw, 1.5rem); }
 .selection-summary, .status-message { min-height: 1rem; margin: 1.4rem 0 0; color: var(--blue); font-size: .67rem; }
 
@@ -89,7 +95,7 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .screen[data-screen='start'].is-dragging { transition: none; }
 .screen[data-screen='start'].is-leaving { transform: translateY(-100%); transition-duration: .45s; }
 .toast { position: fixed; z-index: 10; left: 50%; bottom: 1.5rem; max-width: calc(100% - 2rem); padding: .8rem 1rem; background: var(--ink); color: var(--paper); font-size: .65rem; transform: translate(-50%, 180%); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .25s, opacity .25s, visibility 0s .25s; } .toast.visible { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .25s, opacity .25s; }
-@media (max-width: 700px) { .shot-grid { max-width: 22rem; } .photo-preview-wrap { height: min(48vh, 28rem); max-width: 82vw; } }
+@media (max-width: 700px) { .shot-option-thumb { height: min(46vh, 26rem); } .photo-preview-wrap { height: min(48vh, 28rem); max-width: 82vw; } }
 @media (min-width: 701px) and (max-width: 1100px) {
 	.screen { padding-inline: clamp(2rem, 6vw, 4.5rem); }
 	.selection-summary, .status-message { font-size: .82rem; }
@@ -115,7 +121,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 @media (prefers-reduced-motion: reduce) { *, *:before, *:after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (orientation: portrait) and (pointer: coarse) and (min-width: 701px) {
 	.screen { padding-inline: clamp(2rem, 7vw, 5rem); }
-	.screen[data-screen='shots'] .shot-grid { gap: 2rem; }
 	.camera-stage { --stage-width: 80vw; --stage-height: 52svh; }
 }
 /* Primary target device: iPad 11" portrait, 820x1180 CSS px (also covers the
@@ -129,7 +134,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 	   reclaims the extra height so content still fits the fixed 1180px box. */
 	.brand-screen { padding-block: clamp(1.25rem, 2.75vh, 2rem); gap: clamp(.85rem, 2vh, 1.25rem); }
 	.screen[data-screen='shots'] .script-heading { font-size: clamp(1.6rem, 4vw, 2.4rem); }
-	.screen[data-screen='shots'] .shot-grid { max-width: 34rem; gap: 1.25rem clamp(1.25rem, 3.5vw, 2.25rem); }
 	/* Live camera box: 52svh tall at most leaves room for the logo, heading,
 	   message and button inside the fixed 1180px box. */
 	.camera-stage { --stage-width: 80vw; --stage-height: 52svh; }

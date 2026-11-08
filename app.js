@@ -109,37 +109,24 @@ let clipEnabled = false;
 let clipRecorder = null;
 let clipStopTimer = null;
 
-// Blank photo-slot rectangles measured directly from each frame PNG's printed
-// border lines (pixel coordinates in the frame's own native resolution).
-// These are first-pass measurements -- nudge them here if a print run shows
-// a photo sitting off-center inside its slot.
+// Blank photo-slot rectangles measured directly from each frame PNG's
+// see-through holes (pixel coordinates in the frame's own native resolution).
+// Nudge them here if a print run shows a photo sitting off-center in its slot.
+// Frames for the PTTEP Tax Connect 2026 event (KM x PTTEP Tax Team receipt).
+// The earlier Snaplicious frames are still in assets/ (pic1.png - pic4.png)
+// and in git history if they are wanted again after the event.
 const FRAME_LAYOUTS = {
   1: {
-    src: 'assets/pic1.png', width: 945, height: 1772,
-    slots: [{ x: 108, y: 244, width: 753, height: 735 }]
+    src: 'assets/km-tax-1.png', width: 798, height: 2000,
+    // Live camera box a touch smaller than the most that fits (see fitCameraStage).
+    stageScale: 0.94,
+    slots: [{ x: 46, y: 540, width: 705, height: 644 }]
   },
   2: {
-    src: 'assets/pic2.png', width: 889, height: 2000,
+    src: 'assets/km-tax-2.png', width: 719, height: 2000,
     slots: [
-      { x: 136, y: 205, width: 638, height: 527 },
-      { x: 136, y: 747, width: 638, height: 527 }
-    ]
-  },
-  3: {
-    src: 'assets/pic3.png', width: 800, height: 2000,
-    slots: [
-      { x: 92, y: 205, width: 637, height: 367 },
-      { x: 92, y: 583, width: 637, height: 367 },
-      { x: 92, y: 960, width: 637, height: 367 }
-    ]
-  },
-  4: {
-    src: 'assets/pic4.png', width: 800, height: 2000,
-    slots: [
-      { x: 51, y: 238, width: 353, height: 510 },
-      { x: 417, y: 238, width: 353, height: 510 },
-      { x: 51, y: 766, width: 353, height: 510 },
-      { x: 417, y: 766, width: 353, height: 510 }
+      { x: 43, y: 467, width: 633, height: 435 },
+      { x: 43, y: 910, width: 633, height: 435 }
     ]
   }
 };
@@ -311,8 +298,8 @@ function selectShotCount(photoCount) {
 function confirmShotSelection() {
   if (!state.photoCount) return notify('Choose how many shots first.');
   syncServerSession({ photoCount: state.photoCount, frame: state.frame, state: 'SELECT_SHOTS' });
-  updateCameraFraming();
   showScreen('camera');
+  updateCameraFraming();
   initCamera();
 }
 
@@ -425,6 +412,7 @@ function updateCameraFraming() {
   const slot = layout.slots[0];
   const slotRatio = slot.width / slot.height;
   cameraStage.style.setProperty('--stage-ratio', slotRatio);
+  fitCameraStage(slotRatio);
   if (!video.videoWidth) return;
   // object-fit: cover already fills the box; this is how much of the camera's
   // width it shows before any zoom.
@@ -432,6 +420,31 @@ function updateCameraFraming() {
   const crop = drawCover(video, slot.width, slot.height, CAMERA_ZOOM);
   document.documentElement.style.setProperty('--camera-zoom', coverWidth / crop.sourceWidth);
 }
+
+// Makes the live camera box as big as the camera screen allows, so guests can
+// see themselves clearly. Only the on-screen box grows: the saved photo is
+// still cut to the slot size by captureSlotPhoto(). Measured from the real
+// screen instead of CSS vw/svh rules, which did not take effect inside Kiosker.
+// The content is centred, so it must leave the Back button's height free at
+// both the top and the bottom of the screen.
+const CAMERA_STAGE_MAX_WIDTH = 0.9; // share of the screen width
+function fitCameraStage(slotRatio) {
+  const screen = cameraStage.closest('.screen');
+  if (!screen.classList.contains('screen--active')) return;
+  const style = getComputedStyle(screen);
+  const gap = parseFloat(style.rowGap) || 0;
+  const others = [...screen.children].filter((element) => element !== cameraStage && element.offsetHeight > 0 && getComputedStyle(element).position !== 'absolute');
+  const othersHeight = others.reduce((total, element) => total + element.offsetHeight, 0) + gap * others.length;
+  const backButtonRoom = screen.clientHeight - cameraBackButton.offsetTop;
+  const edgeRoom = Math.max(backButtonRoom, parseFloat(style.paddingTop), parseFloat(style.paddingBottom)) + 8;
+  const maxHeight = screen.clientHeight - 2 * edgeRoom - othersHeight;
+  const maxWidth = screen.clientWidth * CAMERA_STAGE_MAX_WIDTH;
+  const scale = FRAME_LAYOUTS[state.photoCount]?.stageScale ?? 1;
+  const width = Math.max(0, Math.min(maxWidth, maxHeight * slotRatio) * scale);
+  cameraStage.style.width = `${Math.floor(width)}px`;
+}
+
+window.addEventListener('resize', () => { if (state.photoCount) updateCameraFraming(); });
 
 function flashCamera() {
   if (!cameraFlash) return;
