@@ -44,6 +44,12 @@ const TONE_PRESETS = {
     greyMix: [0.5, 0.4, 0.1],
     curve: [[0, 0], [30, 40], [70, 110], [110, 155], [150, 190], [200, 225], [225, 240], [255, 255]]
   },
+  // Between baseline and "brighter", a little closer to "brighter" (user asked
+  // for B "a touch darker" on 2026-11-18).
+  'brighter-soft': {
+    greyMix: [0.5, 0.4, 0.1],
+    curve: [[0, 0], [30, 37], [70, 103], [110, 147], [150, 183], [200, 220], [225, 236], [255, 255]]
+  },
   brightest: {
     greyMix: [0.5, 0.4, 0.1],
     curve: [[0, 0], [30, 50], [70, 130], [110, 175], [150, 205], [200, 233], [225, 244], [255, 255]]
