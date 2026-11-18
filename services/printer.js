@@ -28,7 +28,29 @@ function buildToneLut(points) {
   return lut;
 }
 
-const TONE_LUT = buildToneLut(TONE_CURVE);
+// Print tone presets, picked with PRINT_TONE in .env (then pm2 restart photobooth).
+// "baseline" is the setting locked in on 2026-10-03 and stays exactly as it was:
+// set PRINT_TONE=baseline (or remove the line) to go back to it at any time.
+// The brighter presets were added on 2026-11-18 because faces printed too dark
+// in front of a white wall: the iPad camera exposes for the bright wall, so the
+// face is already dark in the photo. They make two changes to the photo slots:
+//  - greyMix: turns colour into grey with more weight on red, like a red filter
+//    in black-and-white film photography. Skin is mostly red so it comes out
+//    lighter, while white walls and grey or black things barely change.
+//  - curve: a tone curve that lifts dark and middle tones more than TONE_CURVE.
+const TONE_PRESETS = {
+  baseline: { greyMix: null, curve: TONE_CURVE },
+  brighter: {
+    greyMix: [0.5, 0.4, 0.1],
+    curve: [[0, 0], [30, 40], [70, 110], [110, 155], [150, 190], [200, 225], [225, 240], [255, 255]]
+  },
+  brightest: {
+    greyMix: [0.5, 0.4, 0.1],
+    curve: [[0, 0], [30, 50], [70, 130], [110, 175], [150, 205], [200, 233], [225, 244], [255, 255]]
+  }
+};
+for (const preset of Object.values(TONE_PRESETS)) preset.lut = buildToneLut(preset.curve);
+const ACTIVE_TONE = TONE_PRESETS[process.env.PRINT_TONE] ? process.env.PRINT_TONE : 'baseline';
 
 // Frame artwork (titles, menu text, borders, barcode) is never toned or dithered:
 // any frame pixel darker than this prints solid black, the rest stays blank paper,
@@ -111,16 +133,32 @@ function packBits(ditheredValues, width, height) {
   return packed;
 }
 
-async function ditherForPrint(dataUrl, framePath) {
+// Grey version of the photo for the tone steps. Baseline keeps sharp's own
+// grayscale exactly as before; a preset with greyMix mixes red, green and blue
+// with its own weights instead.
+async function toneInput(sized, greyMix) {
+  if (!greyMix) return sized.clone().grayscale();
+  const { data, info } = await sized.clone().removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const grey = Buffer.alloc(info.width * info.height);
+  const [red, green, blue] = greyMix;
+  for (let index = 0; index < grey.length; index++) {
+    const at = index * info.channels;
+    grey[index] = Math.min(255, Math.round(red * data[at] + green * data[at + 1] + blue * data[at + 2]));
+  }
+  // .grayscale() keeps the output one channel (sharp would otherwise return colour).
+  return sharp(grey, { raw: { width: info.width, height: info.height, channels: 1 } }).grayscale();
+}
+
+async function ditherForPrint(dataUrl, framePath, toneName = ACTIVE_TONE) {
+  const tone = TONE_PRESETS[toneName] || TONE_PRESETS.baseline;
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
   const inputBuffer = Buffer.from(base64, 'base64');
   const sized = sharp(inputBuffer)
     .flatten({ background: '#ffffff' })
     .rotate(ROTATE_180 ? 180 : 0)
-    .resize({ width: PRINT_WIDTH_DOTS })
-    .grayscale();
-  const untouched = await sized.clone().raw().toBuffer();
-  const { data, info } = await sized
+    .resize({ width: PRINT_WIDTH_DOTS });
+  const untouched = await sized.clone().grayscale().raw().toBuffer();
+  const { data, info } = await (await toneInput(sized, tone.greyMix))
     .median(3)
     .clahe({ width: 32, height: 32, maxSlope: 1 })
     .gamma(1.6)
@@ -129,7 +167,7 @@ async function ditherForPrint(dataUrl, framePath) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  for (let index = 0; index < data.length; index++) data[index] = TONE_LUT[data[index]];
+  for (let index = 0; index < data.length; index++) data[index] = tone.lut[data[index]];
 
   const width = info.width;
   const height = info.height;
@@ -144,8 +182,8 @@ async function ditherForPrint(dataUrl, framePath) {
   return { dithered, width, height };
 }
 
-async function dataUrlToRaster(dataUrl, framePath) {
-  const { dithered, width, height } = await ditherForPrint(dataUrl, framePath);
+async function dataUrlToRaster(dataUrl, framePath, toneName) {
+  const { dithered, width, height } = await ditherForPrint(dataUrl, framePath, toneName);
   const packed = packBits(dithered, width, height);
 
   const header = Buffer.from([
@@ -176,4 +214,4 @@ function isReady() {
   return fs.existsSync(DEVICE_PATH);
 }
 
-module.exports = { printPhoto, isReady, ditherForPrint };
+module.exports = { printPhoto, isReady, ditherForPrint, dataUrlToRaster, ACTIVE_TONE };
