@@ -38,6 +38,8 @@ function buildToneLut(points) {
 //    in black-and-white film photography. Skin is mostly red so it comes out
 //    lighter, while white walls and grey or black things barely change.
 //  - curve: a tone curve that lifts dark and middle tones more than TONE_CURVE.
+// Sharpening used by every preset that does not set its own.
+const DEFAULT_SHARPEN = { sigma: 1.2, m1: 1.8, m2: 3.5 };
 const TONE_PRESETS = {
   baseline: { greyMix: null, curve: TONE_CURVE },
   brighter: {
@@ -49,6 +51,17 @@ const TONE_PRESETS = {
   'brighter-soft': {
     greyMix: [0.5, 0.4, 0.1],
     curve: [[0, 0], [30, 37], [70, 103], [110, 147], [150, 183], [200, 220], [225, 236], [255, 255]]
+  },
+  // B2 with a little more sharpening, as test options (2026-11-18).
+  'brighter-soft-sharp1': {
+    greyMix: [0.5, 0.4, 0.1],
+    curve: [[0, 0], [30, 37], [70, 103], [110, 147], [150, 183], [200, 220], [225, 236], [255, 255]],
+    sharpen: { sigma: 1.2, m1: 2.2, m2: 4.2 }
+  },
+  'brighter-soft-sharp2': {
+    greyMix: [0.5, 0.4, 0.1],
+    curve: [[0, 0], [30, 37], [70, 103], [110, 147], [150, 183], [200, 220], [225, 236], [255, 255]],
+    sharpen: { sigma: 1.2, m1: 2.6, m2: 5.0 }
   },
   brightest: {
     greyMix: [0.5, 0.4, 0.1],
@@ -169,7 +182,7 @@ async function ditherForPrint(dataUrl, framePath, toneName = ACTIVE_TONE) {
     .clahe({ width: 32, height: 32, maxSlope: 1 })
     .gamma(1.6)
     .linear(1.0, 12)
-    .sharpen({ sigma: 1.2, m1: 1.8, m2: 3.5 })
+    .sharpen(tone.sharpen || DEFAULT_SHARPEN)
     .raw()
     .toBuffer({ resolveWithObject: true });
 
