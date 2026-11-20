@@ -124,10 +124,10 @@ const BAND_ROW_SHARE = 0.4;
 // Rows this close to a band row are its soft (blended) edge: they print as blank
 // paper, so the band's outline does not show up as a thin stray line.
 const BAND_EDGE_ROWS = 4;
-const BAND_INK_LEVEL = 0.5;
+const BAND_INK_LEVEL = 0.3;
 // A band row where nearly every pixel is light is the band's blended outline,
 // not artwork (no logo or lettering spans the full width), so it stays paper.
-const BAND_OUTLINE_SHARE = 0.85;
+const BAND_OUTLINE_SHARE = 0.6;
 const FRAME_BAND_INK = 3;
 const FRAME_BAND_PAPER = 4;
 async function loadFrameMask(framePath, width, height) {
