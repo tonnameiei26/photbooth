@@ -8,25 +8,25 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
   <title>Receipt Photo Booth</title>
-  <link rel="stylesheet" href="style.css?v=20261011d">
+  <link rel="stylesheet" href="style.css?v=20261120a">
 </head>
 <body>
   <main class="booth-shell">
-    <section class="screen screen--active start-hero-screen" data-screen="start" aria-label="Snaplicious Studio - touch the screen to start">
-      <img class="start-hero" src="assets/start-km-tax.jpg" alt="KM x PTTEP Tax Team - Snap Your Moments - touch the screen to start">
+    <section class="screen screen--active start-hero-screen" data-screen="start" aria-label="CHAPTER - tap to begin">
+      <img class="start-hero" src="assets/start-chapter.jpg" alt="CHAPTER - Your Moment, Your Journey, Your Chapter - tap to begin">
     </section>
 
     <section class="screen brand-screen shots-screen" data-screen="shots" aria-labelledby="shotsTitle">
       <img class="brand-logo brand-logo--compact" src="assets/logo.png" alt="Snaplicious Studio">
-      <h2 class="script-heading" id="shotsTitle">Select how many shots you want on your print</h2>
+      <h2 class="script-heading" id="shotsTitle">Choose your frame</h2>
       <div class="shot-grid" id="shotGrid">
-        <button class="shot-option" data-photocount="1" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/km-tax-1-thumb.jpg" alt="1 shot frame layout" draggable="false"></span>
-          <b>1 Shot</b>
+        <button class="shot-option" data-frame="navy" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/chapter-navy-thumb.jpg" alt="Navy 4-shot frame" draggable="false"></span>
+          <b>Navy</b>
         </button>
-        <button class="shot-option" data-photocount="2" type="button">
-          <span class="shot-option-thumb"><img src="assets/thumbs/km-tax-2-thumb.jpg" alt="2 shots frame layout" draggable="false"></span>
-          <b>2 Shots</b>
+        <button class="shot-option" data-frame="gold" type="button">
+          <span class="shot-option-thumb"><img src="assets/thumbs/chapter-gold-thumb.jpg" alt="Gold 4-shot frame" draggable="false"></span>
+          <b>Gold</b>
         </button>
       </div>
       <button class="pill-button corner-button corner-button--bottom corner-button--left" id="shotsBackButton" type="button">Back</button>
@@ -117,6 +117,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <canvas id="photoCanvas" hidden></canvas>
   </main>
-  <script src="app.js?v=20261011g"></script>
+  <script src="app.js?v=20261120a"></script>
 </body>
 </html>

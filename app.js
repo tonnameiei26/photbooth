@@ -25,6 +25,7 @@ window.addEventListener('orientationchange', fitStandaloneHeight);
 const state = {
   screen: 'start',
   photoCount: null,
+  frameKey: null,
   frame: null,
   capturedPhotos: [],
   composedPhoto: null,
@@ -110,26 +111,32 @@ let clipRecorder = null;
 let clipStopTimer = null;
 
 // Blank photo-slot rectangles measured directly from each frame PNG's
-// see-through holes (pixel coordinates in the frame's own native resolution).
-// Nudge them here if a print run shows a photo sitting off-center in its slot.
-// Frames for the PTTEP Tax Connect 2026 event (KM x PTTEP Tax Team receipt).
-// The earlier Snaplicious frames are still in assets/ (pic1.png - pic4.png)
-// and in git history if they are wanted again after the event.
+// see-through holes (pixel coordinates in the frame's own native resolution),
+// padded a few pixels so no gap shows at the edges (the frame is drawn on top).
+// Frames for the CHAPTER event (25/11/2026): the same 4-shot boarding-pass
+// receipt in two colours. Guests pick a colour; both take 4 shots.
+// Earlier event frames (km-tax-*, Snaplicious pic1-pic4) are still in assets/.
 const FRAME_LAYOUTS = {
-  1: {
-    src: 'assets/km-tax-1.png', width: 798, height: 2000,
-    // Live camera box a touch smaller than the most that fits (see fitCameraStage).
-    stageScale: 0.94,
-    slots: [{ x: 46, y: 540, width: 705, height: 644 }]
-  },
-  2: {
-    src: 'assets/km-tax-2.png', width: 719, height: 2000,
+  navy: {
+    src: 'assets/chapter-navy.png', width: 800, height: 1498,
     slots: [
-      { x: 43, y: 467, width: 633, height: 435 },
-      { x: 43, y: 910, width: 633, height: 435 }
+      { x: 69, y: 218, width: 319, height: 462 },
+      { x: 417, y: 218, width: 319, height: 462 },
+      { x: 69, y: 699, width: 319, height: 462 },
+      { x: 417, y: 699, width: 319, height: 462 }
+    ]
+  },
+  gold: {
+    src: 'assets/chapter-gold.png', width: 800, height: 1498,
+    slots: [
+      { x: 68, y: 212, width: 319, height: 463 },
+      { x: 416, y: 212, width: 319, height: 463 },
+      { x: 68, y: 692, width: 319, height: 474 },
+      { x: 416, y: 692, width: 319, height: 474 }
     ]
   }
 };
+function currentLayout() { return FRAME_LAYOUTS[state.frameKey]; }
 
 async function apiRequest(endpoint, options = {}, { quiet = false } = {}) {
   try {
@@ -288,15 +295,18 @@ function updateCameraMessage() {
   cameraMessage.textContent = `Shot ${state.capturedPhotos.length + 1} of ${state.photoCount} — camera is ready.`;
 }
 
-function selectShotCount(photoCount) {
-  state.photoCount = photoCount;
-  state.frame = FRAME_LAYOUTS[photoCount].src;
+function selectFrame(frameKey) {
+  const layout = FRAME_LAYOUTS[frameKey];
+  if (!layout) return;
+  state.frameKey = frameKey;
+  state.photoCount = layout.slots.length;
+  state.frame = layout.src;
   state.capturedPhotos = [];
-  document.querySelectorAll('.shot-option').forEach((button) => button.classList.toggle('selected', Number(button.dataset.photocount) === photoCount));
+  document.querySelectorAll('.shot-option').forEach((button) => button.classList.toggle('selected', button.dataset.frame === frameKey));
 }
 
 function confirmShotSelection() {
-  if (!state.photoCount) return notify('Choose how many shots first.');
+  if (!state.photoCount) return notify('Choose a frame first.');
   syncServerSession({ photoCount: state.photoCount, frame: state.frame, state: 'SELECT_SHOTS' });
   showScreen('camera');
   updateCameraFraming();
@@ -407,7 +417,7 @@ function drawCover(source, targetWidth, targetHeight, zoom = 1) {
 // Shapes the live camera box like the photo slot of the chosen frame and zooms
 // the video so the box shows exactly the area drawCover() will save.
 function updateCameraFraming() {
-  const layout = FRAME_LAYOUTS[state.photoCount];
+  const layout = currentLayout();
   if (!layout) return;
   const slot = layout.slots[0];
   const slotRatio = slot.width / slot.height;
@@ -439,7 +449,7 @@ function fitCameraStage(slotRatio) {
   const edgeRoom = Math.max(backButtonRoom, parseFloat(style.paddingTop), parseFloat(style.paddingBottom)) + 8;
   const maxHeight = screen.clientHeight - 2 * edgeRoom - othersHeight;
   const maxWidth = screen.clientWidth * CAMERA_STAGE_MAX_WIDTH;
-  const scale = FRAME_LAYOUTS[state.photoCount]?.stageScale ?? 1;
+  const scale = currentLayout()?.stageScale ?? 1;
   const width = Math.max(0, Math.min(maxWidth, maxHeight * slotRatio) * scale);
   cameraStage.style.width = `${Math.floor(width)}px`;
 }
@@ -477,7 +487,7 @@ function loadFrameImage(src) {
 }
 
 async function composeFinalPhoto() {
-  const layout = FRAME_LAYOUTS[state.photoCount];
+  const layout = currentLayout();
   canvas.width = layout.width;
   canvas.height = layout.height;
   const context = canvas.getContext('2d');
@@ -506,7 +516,7 @@ async function capturePhotoStep() {
     return;
   }
   try {
-    const layout = FRAME_LAYOUTS[state.photoCount];
+    const layout = currentLayout();
     const slot = layout.slots[state.capturedPhotos.length];
     state.capturedPhotos.push(captureSlotPhoto(slot));
     restartIdleTimer();
@@ -615,6 +625,7 @@ function resetSession() {
   stopCamera();
   state.screen = 'start';
   state.photoCount = null;
+  state.frameKey = null;
   state.frame = null;
   state.capturedPhotos = [];
   state.composedPhoto = null;
@@ -665,7 +676,7 @@ startScreen.addEventListener('pointercancel', () => {
   startScreen.style.transform = '';
 }, { passive: true });
 startScreen.addEventListener('click', startSession);
-document.querySelector('#shotGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-photocount]'); if (option) selectShotCount(Number(option.dataset.photocount)); });
+document.querySelector('#shotGrid').addEventListener('click', (event) => { const option = event.target.closest('[data-frame]'); if (option) selectFrame(option.dataset.frame); });
 document.querySelector('#shotsNextButton').addEventListener('click', confirmShotSelection);
 document.querySelector('#shotsBackButton').addEventListener('click', resetSession);
 cameraBackButton.addEventListener('click', () => {
