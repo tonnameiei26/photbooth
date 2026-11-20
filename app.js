@@ -114,16 +114,14 @@ let clipStopTimer = null;
 // see-through holes (pixel coordinates in the frame's own native resolution),
 // padded a few pixels so no gap shows at the edges (the frame is drawn on top).
 // Frames for the CHAPTER event (25/11/2026): the same 4-shot boarding-pass
-// receipt in two colours. Guests pick a colour; both take 4 shots.
+// receipt in two colours: Navy takes 2 shots, Gold takes 4.
 // Earlier event frames (km-tax-*, Snaplicious pic1-pic4) are still in assets/.
 const FRAME_LAYOUTS = {
   navy: {
-    src: 'assets/chapter-navy.png', width: 1067, height: 2000,
+    src: 'assets/chapter-navy-2.png', width: 1067, height: 2000,
     slots: [
-      { x: 90, y: 283, width: 423, height: 615 },
-      { x: 555, y: 283, width: 423, height: 615 },
-      { x: 90, y: 924, width: 423, height: 615 },
-      { x: 555, y: 924, width: 423, height: 615 }
+      { x: 92, y: 269, width: 884, height: 621 },
+      { x: 92, y: 918, width: 884, height: 629 }
     ]
   },
   gold: {

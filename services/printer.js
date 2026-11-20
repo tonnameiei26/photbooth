@@ -138,6 +138,20 @@ async function loadFrameMask(framePath, width, height) {
 const ESC_INIT = Buffer.from([0x1b, 0x40]);
 const CUT = Buffer.from([0x1d, 0x56, 0x01]);
 const FEED = Buffer.from([0x0a, 0x0a, 0x0a, 0x0a]);
+// The cutter sits about 13mm above the print head and this printer cannot pull
+// paper back (ESC e is ignored, tested 2026-11-20), so every receipt starts with
+// that much blank paper before the image. Blank rows are printed after the image
+// too, so the blank edges at both ends match instead of one end being flush and
+// the other wide. (ESC J "feed n dots" was ignored by this printer, so the
+// margin is sent as a block of white raster rows instead.) In print dots
+// (8 dots = 1mm); 0 turns it off.
+const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 96) || 0);
+const TRAILING_MARGIN = TRAILING_MARGIN_DOTS
+  ? Buffer.concat([
+    Buffer.from([0x1d, 0x76, 0x30, 0x00, WIDTH_BYTES & 0xff, (WIDTH_BYTES >> 8) & 0xff, TRAILING_MARGIN_DOTS & 0xff, (TRAILING_MARGIN_DOTS >> 8) & 0xff]),
+    Buffer.alloc(WIDTH_BYTES * TRAILING_MARGIN_DOTS, 0)
+  ])
+  : Buffer.alloc(0);
 
 // Serpentine (boustrophedon) scan: alternating scan direction per row cancels out
 // the diagonal "worm trail" streaking that plain left-to-right Floyd-Steinberg
@@ -243,7 +257,7 @@ let printQueue = Promise.resolve();
 
 async function printPhoto(dataUrl, copies = 1, framePath) {
   const raster = await dataUrlToRaster(dataUrl, framePath);
-  const receipt = Buffer.concat([ESC_INIT, raster, FEED, CUT]);
+  const receipt = Buffer.concat([ESC_INIT, raster, TRAILING_MARGIN, FEED, CUT]);
   const job = Buffer.concat(Array(copies).fill(receipt));
   // Written in the background: the printer takes the data only as fast as it
   // prints, and a blocking write would freeze the whole server meanwhile
