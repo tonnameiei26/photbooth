@@ -118,21 +118,21 @@ let clipStopTimer = null;
 // Earlier event frames (km-tax-*, Snaplicious pic1-pic4) are still in assets/.
 const FRAME_LAYOUTS = {
   navy: {
-    src: 'assets/chapter-navy.png', width: 800, height: 1498,
+    src: 'assets/chapter-navy.png', width: 1067, height: 2000,
     slots: [
-      { x: 69, y: 218, width: 319, height: 462 },
-      { x: 417, y: 218, width: 319, height: 462 },
-      { x: 69, y: 699, width: 319, height: 462 },
-      { x: 417, y: 699, width: 319, height: 462 }
+      { x: 90, y: 283, width: 423, height: 615 },
+      { x: 555, y: 283, width: 423, height: 615 },
+      { x: 90, y: 924, width: 423, height: 615 },
+      { x: 555, y: 924, width: 423, height: 615 }
     ]
   },
   gold: {
-    src: 'assets/chapter-gold.png', width: 800, height: 1498,
+    src: 'assets/chapter-gold.png', width: 1067, height: 2000,
     slots: [
-      { x: 68, y: 212, width: 319, height: 463 },
-      { x: 416, y: 212, width: 319, height: 463 },
-      { x: 68, y: 692, width: 319, height: 474 },
-      { x: 416, y: 692, width: 319, height: 474 }
+      { x: 92, y: 280, width: 423, height: 617 },
+      { x: 556, y: 280, width: 423, height: 617 },
+      { x: 92, y: 922, width: 423, height: 631 },
+      { x: 556, y: 922, width: 423, height: 631 }
     ]
   }
 };

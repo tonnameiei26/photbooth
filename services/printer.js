@@ -98,6 +98,13 @@ const FRAME_INK_THRESHOLD = 170;
 // pale parts. A pixel counts as colourful when its strongest and weakest colour
 // channels differ by more than this; greys, black and white never do.
 const FRAME_COLOUR_THRESHOLD = 60;
+// Thin coloured lettering (such as small gold text on white) blends with the
+// paper when shrunk to print size and drops below that threshold. Mid-tone
+// pixels with a weaker tint still count as colourful; bright cream/white
+// artwork (a cream logo on a dark band) stays above FRAME_TINT_MAX_BRIGHTNESS
+// so it keeps printing as blank paper.
+const FRAME_TINT_THRESHOLD = 30;
+const FRAME_TINT_MAX_BRIGHTNESS = 215;
 const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 
 // Returns one byte per print dot: 0 inside the photo slots, FRAME_PLAIN where
@@ -120,7 +127,9 @@ async function loadFrameMask(framePath, width, height) {
   for (let index = 0; index < mask.length; index++) {
     const [red, green, blue, alpha] = data.subarray(index * 4, index * 4 + 4);
     if (alpha < 128) continue;
-    const colourful = Math.max(red, green, blue) - Math.min(red, green, blue) > FRAME_COLOUR_THRESHOLD;
+    const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
+    const brightness = (red + green + blue) / 3;
+    const colourful = spread > FRAME_COLOUR_THRESHOLD || (spread > FRAME_TINT_THRESHOLD && brightness < FRAME_TINT_MAX_BRIGHTNESS);
     mask[index] = colourful ? FRAME_COLOUR : FRAME_PLAIN;
   }
   return mask;
