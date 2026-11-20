@@ -112,6 +112,24 @@ const ASSETS_DIR = path.join(__dirname, '..', 'assets');
 // colourful. Null if the frame is missing or does not line up.
 const FRAME_PLAIN = 1;
 const FRAME_COLOUR = 2;
+// Solid colour bands (the full-width coloured strips across the top and bottom
+// of a frame) print inverted: the band itself stays blank paper and the light
+// artwork on it (logo, lettering, QR, icons) prints black. This avoids big
+// solid-black blocks whose edges sit next to the printer's blank margins.
+// Only the print changes; the colour photo guests download keeps the design.
+// A print row counts as part of a band when more than BAND_ROW_SHARE of it is
+// colourful. Set PRINT_INVERT_BANDS=false in .env to print bands solid black.
+const INVERT_BANDS = process.env.PRINT_INVERT_BANDS !== 'false';
+const BAND_ROW_SHARE = 0.4;
+// Rows this close to a band row are its soft (blended) edge: they print as blank
+// paper, so the band's outline does not show up as a thin stray line.
+const BAND_EDGE_ROWS = 4;
+const BAND_INK_LEVEL = 0.5;
+// A band row where nearly every pixel is light is the band's blended outline,
+// not artwork (no logo or lettering spans the full width), so it stays paper.
+const BAND_OUTLINE_SHARE = 0.85;
+const FRAME_BAND_INK = 3;
+const FRAME_BAND_PAPER = 4;
 async function loadFrameMask(framePath, width, height) {
   if (!framePath) return null;
   const resolved = path.resolve(ASSETS_DIR, '..', framePath);
@@ -132,7 +150,59 @@ async function loadFrameMask(framePath, width, height) {
     const colourful = spread > FRAME_COLOUR_THRESHOLD || (spread > FRAME_TINT_THRESHOLD && brightness < FRAME_TINT_MAX_BRIGHTNESS);
     mask[index] = colourful ? FRAME_COLOUR : FRAME_PLAIN;
   }
+  if (INVERT_BANDS) invertBands(mask, data, width, height);
   return mask;
+}
+
+// Marks every pixel of a band row as band paper (the band colour, and anything
+// closer to it than to white) or band ink (the light artwork on the band).
+function invertBands(mask, data, width, height) {
+  const bandRows = [];
+  let bandBrightnessTotal = 0;
+  let bandPixels = 0;
+  for (let y = 0; y < height; y++) {
+    let colourful = 0;
+    let brightnessTotal = 0;
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      if (mask[index] !== FRAME_COLOUR) continue;
+      colourful++;
+      brightnessTotal += (data[index * 4] + data[index * 4 + 1] + data[index * 4 + 2]) / 3;
+    }
+    if (colourful > width * BAND_ROW_SHARE) {
+      bandRows.push(y);
+      bandBrightnessTotal += brightnessTotal;
+      bandPixels += colourful;
+    }
+  }
+  if (!bandRows.length) return;
+  // 2 = band row (artwork inverted), 1 = band edge row (all blank paper).
+  const rowKind = new Uint8Array(height);
+  for (const y of bandRows) {
+    for (let near = Math.max(0, y - BAND_EDGE_ROWS); near <= Math.min(height - 1, y + BAND_EDGE_ROWS); near++) rowKind[near] = Math.max(rowKind[near], 1);
+  }
+  for (const y of bandRows) rowKind[y] = 2;
+  // Partway from the band colour to white: lighter pixels are artwork.
+  const bandBrightness = bandBrightnessTotal / bandPixels;
+  const inkFrom = bandBrightness + (255 - bandBrightness) * BAND_INK_LEVEL;
+  for (let y = 0; y < height; y++) {
+    if (!rowKind[y]) continue;
+    if (rowKind[y] === 2) {
+      let light = 0;
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        if ((data[index] + data[index + 1] + data[index + 2]) / 3 > inkFrom) light++;
+      }
+      if (light > width * BAND_OUTLINE_SHARE) rowKind[y] = 1;
+    }
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      if (!mask[index]) continue;
+      if (rowKind[y] === 1) { mask[index] = FRAME_BAND_PAPER; continue; }
+      const brightness = (data[index * 4] + data[index * 4 + 1] + data[index * 4 + 2]) / 3;
+      mask[index] = brightness > inkFrom ? FRAME_BAND_INK : FRAME_BAND_PAPER;
+    }
+  }
 }
 
 const ESC_INIT = Buffer.from([0x1b, 0x40]);
@@ -144,8 +214,10 @@ const FEED = Buffer.from([0x0a, 0x0a, 0x0a, 0x0a]);
 // too, so the blank edges at both ends match instead of one end being flush and
 // the other wide. (ESC J "feed n dots" was ignored by this printer, so the
 // margin is sent as a block of white raster rows instead.) In print dots
-// (8 dots = 1mm); 0 turns it off.
-const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 96) || 0);
+// (8 dots = 1mm); off (0) by default since the frames print with white bands
+// (PRINT_INVERT_BANDS), where an uneven blank edge does not show; 96 matched
+// the two ends when the bands printed solid black.
+const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 0) || 0);
 const TRAILING_MARGIN = TRAILING_MARGIN_DOTS
   ? Buffer.concat([
     Buffer.from([0x1d, 0x76, 0x30, 0x00, WIDTH_BYTES & 0xff, (WIDTH_BYTES >> 8) & 0xff, TRAILING_MARGIN_DOTS & 0xff, (TRAILING_MARGIN_DOTS >> 8) & 0xff]),
@@ -233,7 +305,8 @@ async function ditherForPrint(dataUrl, framePath, toneName = ACTIVE_TONE) {
   const frameMask = await loadFrameMask(framePath, width, height);
   if (frameMask) {
     for (let index = 0; index < data.length; index++) {
-      if (frameMask[index] === FRAME_COLOUR) data[index] = 0;
+      if (frameMask[index] === FRAME_COLOUR || frameMask[index] === FRAME_BAND_INK) data[index] = 0;
+      else if (frameMask[index] === FRAME_BAND_PAPER) data[index] = 255;
       else if (frameMask[index] === FRAME_PLAIN) data[index] = untouched[index] < FRAME_INK_THRESHOLD ? 0 : 255;
     }
   }
