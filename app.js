@@ -124,8 +124,8 @@ const FRAME_LAYOUTS = {
   navy: {
     src: 'assets/chapter-navy-2.png', width: 1067, height: 2000,
     slots: [
-      { x: 92, y: 269, width: 884, height: 621 },
-      { x: 92, y: 918, width: 884, height: 629 }
+      { x: 94, y: 262, width: 880, height: 618 },
+      { x: 94, y: 912, width: 880, height: 624 }
     ],
     print: {
       src: 'assets/chapter-navy-2-print.png', width: 1067, height: 2000,
@@ -138,10 +138,10 @@ const FRAME_LAYOUTS = {
   gold: {
     src: 'assets/chapter-gold.png', width: 1067, height: 2000,
     slots: [
-      { x: 92, y: 280, width: 423, height: 617 },
-      { x: 556, y: 280, width: 423, height: 617 },
-      { x: 92, y: 922, width: 423, height: 631 },
-      { x: 556, y: 922, width: 423, height: 631 }
+      { x: 94, y: 282, width: 418, height: 612 },
+      { x: 559, y: 282, width: 418, height: 612 },
+      { x: 94, y: 924, width: 418, height: 626 },
+      { x: 559, y: 924, width: 418, height: 626 }
     ],
     print: {
       src: 'assets/chapter-gold-print.png', width: 1067, height: 2000,
