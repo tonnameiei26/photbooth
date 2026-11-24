@@ -30,7 +30,7 @@ const allowedStates = new Set(['IDLE', 'SELECT_SHOTS', 'CAMERA', 'PREVIEW', 'SEL
 
 function createSession() {
   const now = new Date().toISOString();
-  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, photoUrlBw: null, qrCodeBw: null, clipStatus: 'NOT_STARTED', clipUrl: null, qrCodeClip: null, createdAt: now, updatedAt: now };
+  const session = { id: crypto.randomUUID(), state: 'IDLE', photoCount: null, frame: null, photo: null, printPhoto: null, printFrame: null, printCopies: 1, print: 'NOT_STARTED', uploadStatus: 'NOT_STARTED', photoUrl: null, qrCode: null, photoUrlBw: null, qrCodeBw: null, clipStatus: 'NOT_STARTED', clipUrl: null, qrCodeClip: null, createdAt: now, updatedAt: now };
   sessions.set(session.id, session);
   db.saveSession(session);
   return session;
@@ -103,7 +103,11 @@ api.patch('/sessions/:id', requireSession, (request, response) => {
 api.post('/sessions/:id/photo', requireSession, (request, response) => {
   const payload = request.body;
   if (typeof payload.photo !== 'string' || !payload.photo.startsWith('data:image/')) return response.status(400).json({ error: 'Photo must be a data URL' });
-  response.json({ session: updateSession(request.session, { state: 'PREVIEW', photo: payload.photo }) });
+  // printPhoto (optional) is the same shots in the black-and-white print frame;
+  // it is what goes to the printer, while photo (colour) is what guests download.
+  const hasPrintPhoto = typeof payload.printPhoto === 'string' && payload.printPhoto.startsWith('data:image/');
+  const changes = { state: 'PREVIEW', photo: payload.photo, printPhoto: hasPrintPhoto ? payload.printPhoto : null, printFrame: hasPrintPhoto && typeof payload.printFrame === 'string' ? payload.printFrame : null };
+  response.json({ session: updateSession(request.session, changes) });
 });
 
 api.post('/sessions/:id/print', requireSession, (request, response) => {
@@ -121,6 +125,8 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
   // photo would pile up in the Pi's memory, and the iPad would be sent the whole
   // photo again each time it asks whether the QR codes are ready.
   const photo = session.photo;
+  const printPhoto = session.printPhoto || photo;
+  const printFrame = session.printPhoto ? session.printFrame : session.frame;
   // An unplugged or switched-off printer is recorded as a failed print instead of
   // refusing the whole request, so the guest still gets QR codes for their photo.
   const printerReady = printer.isReady();
@@ -128,9 +134,9 @@ api.post('/sessions/:id/print', requireSession, (request, response) => {
     console.error(`Print failed for session ${session.id}: ${error.message}`);
     updateSession(session, { state: 'DONE', print: 'FAILED', printError: error.message });
   };
-  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING', photo: null });
+  updateSession(session, { state: 'PRINTING', print: 'PROCESSING', printCopies, uploadStatus: 'PROCESSING', photo: null, printPhoto: null });
   if (printerReady) {
-    printer.printPhoto(photo, printCopies, session.frame)
+    printer.printPhoto(printPhoto, printCopies, printFrame)
       .then(() => updateSession(session, { state: 'DONE', print: 'SUCCESS', printedAt: new Date().toISOString() }))
       .catch(printFailed);
   } else {

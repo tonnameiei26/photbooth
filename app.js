@@ -116,13 +116,24 @@ let clipStopTimer = null;
 // Frames for the CHAPTER event (25/11/2026): the same 4-shot boarding-pass
 // receipt in two colours: Navy takes 2 shots, Gold takes 4.
 // Earlier event frames (km-tax-*, Snaplicious pic1-pic4) are still in assets/.
+// Each frame has a colour version (shown on screen and downloaded via the QR
+// code) and a black-and-white "print" version that goes to the receipt printer.
+// The print version has its own slot positions (measured from its transparent
+// holes); each photo is cropped from the middle to fit its print slot.
 const FRAME_LAYOUTS = {
   navy: {
     src: 'assets/chapter-navy-2.png', width: 1067, height: 2000,
     slots: [
       { x: 92, y: 269, width: 884, height: 621 },
       { x: 92, y: 918, width: 884, height: 629 }
-    ]
+    ],
+    print: {
+      src: 'assets/chapter-navy-2-print.png', width: 1067, height: 2000,
+      slots: [
+        { x: 84, y: 231, width: 903, height: 630 },
+        { x: 84, y: 894, width: 903, height: 638 }
+      ]
+    }
   },
   gold: {
     src: 'assets/chapter-gold.png', width: 1067, height: 2000,
@@ -131,7 +142,16 @@ const FRAME_LAYOUTS = {
       { x: 556, y: 280, width: 423, height: 617 },
       { x: 92, y: 922, width: 423, height: 631 },
       { x: 556, y: 922, width: 423, height: 631 }
-    ]
+    ],
+    print: {
+      src: 'assets/chapter-gold-print.png', width: 1067, height: 2000,
+      slots: [
+        { x: 82, y: 230, width: 431, height: 653 },
+        { x: 557, y: 230, width: 431, height: 653 },
+        { x: 82, y: 911, width: 431, height: 653 },
+        { x: 557, y: 911, width: 431, height: 653 }
+      ]
+    }
   }
 };
 function currentLayout() { return FRAME_LAYOUTS[state.frameKey]; }
@@ -484,15 +504,23 @@ function loadFrameImage(src) {
   });
 }
 
-async function composeFinalPhoto() {
-  const layout = currentLayout();
-  canvas.width = layout.width;
-  canvas.height = layout.height;
-  const context = canvas.getContext('2d');
+// Draws the captured photos into a frame's slots and returns a PNG data URL.
+// A photo whose shape differs a little from its slot is cropped from the middle
+// (never stretched). The print version is sent as JPEG: it is much smaller
+// than PNG and is turned into dots by the printer code anyway.
+async function composeWithFrame(layout, targetCanvas, type = 'image/png') {
+  targetCanvas.width = layout.width;
+  targetCanvas.height = layout.height;
+  const context = targetCanvas.getContext('2d');
   context.clearRect(0, 0, layout.width, layout.height);
   state.capturedPhotos.forEach((slotCanvas, index) => {
     const slot = layout.slots[index];
-    context.drawImage(slotCanvas, slot.x, slot.y, slot.width, slot.height);
+    const scale = Math.max(slot.width / slotCanvas.width, slot.height / slotCanvas.height);
+    const sourceWidth = slot.width / scale;
+    const sourceHeight = slot.height / scale;
+    const sourceX = (slotCanvas.width - sourceWidth) / 2;
+    const sourceY = (slotCanvas.height - sourceHeight) / 2;
+    context.drawImage(slotCanvas, sourceX, sourceY, sourceWidth, sourceHeight, slot.x, slot.y, slot.width, slot.height);
   });
   try {
     const frameImage = await loadFrameImage(layout.src);
@@ -500,11 +528,26 @@ async function composeFinalPhoto() {
   } catch (error) {
     notify('Frame asset unavailable.');
   }
-  state.composedPhoto = canvas.toDataURL('image/png');
+  // JPEG needs a white background, otherwise transparent areas turn black.
+  if (type === 'image/jpeg') {
+    context.globalCompositeOperation = 'destination-over';
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, layout.width, layout.height);
+    context.globalCompositeOperation = 'source-over';
+  }
+  return targetCanvas.toDataURL(type, 0.95);
+}
+
+async function composeFinalPhoto() {
+  const layout = currentLayout();
+  state.composedPhoto = await composeWithFrame(layout, canvas);
+  const printPhoto = layout.print ? await composeWithFrame(layout.print, document.createElement('canvas'), 'image/jpeg') : null;
   preview.src = state.composedPhoto;
   previewWraps.forEach((wrap) => { wrap.style.aspectRatio = `${layout.width} / ${layout.height}`; });
   if (state.serverSessionId) {
-    apiRequest(`/api/sessions/${state.serverSessionId}/photo`, { method: 'POST', body: JSON.stringify({ photo: state.composedPhoto }) });
+    const body = { photo: state.composedPhoto };
+    if (printPhoto) Object.assign(body, { printPhoto, printFrame: layout.print.src });
+    apiRequest(`/api/sessions/${state.serverSessionId}/photo`, { method: 'POST', body: JSON.stringify(body) });
   }
 }
 
