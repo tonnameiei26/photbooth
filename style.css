@@ -159,3 +159,5 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .brand-screen .shot-option-thumb { background: transparent; }
 /* The chosen frame only lifts up (no red border), as the owner asked. */
 .brand-screen .shot-option.selected .shot-option-thumb { border-color: transparent; }
+/* QR boxes match the cream/navy download QR codes (QR_*_COLOR in .env). */
+.brand-screen .qr-box { background: var(--chapter-cream); border-color: var(--chapter-navy); }

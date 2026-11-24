@@ -14,6 +14,14 @@ cloudinary.config({
 // wait for their QR codes, and a JPEG at this quality is about a quarter of
 // the size of the PNG with no visible difference on a phone.
 const JPEG_QUALITY = 92;
+// Colours of the download QR codes shown on the iPad. Black on white by
+// default; an event can match its theme with QR_DARK_COLOR / QR_LIGHT_COLOR in
+// .env (keep the dark colour much darker than the light one so phones scan it).
+const QR_OPTIONS = {
+  margin: 1,
+  width: 512,
+  color: { dark: process.env.QR_DARK_COLOR || '#000000', light: process.env.QR_LIGHT_COLOR || '#ffffff' }
+};
 
 // The booth's internet link (a phone hotspot for now) drops out briefly from
 // time to time, so an upload that fails is tried again before giving up.
@@ -75,8 +83,8 @@ async function uploadAndGenerateQr(colorDataUrl, sessionId) {
     uploadImage(bwJpeg, `${sessionId}-bw`)
   ]);
   const [qrCode, qrCodeBw] = await Promise.all([
-    QRCode.toDataURL(colorUpload.secure_url, { margin: 1, width: 512 }),
-    QRCode.toDataURL(bwUpload.secure_url, { margin: 1, width: 512 })
+    QRCode.toDataURL(colorUpload.secure_url, QR_OPTIONS),
+    QRCode.toDataURL(bwUpload.secure_url, QR_OPTIONS)
   ]);
   return { photoUrl: colorUpload.secure_url, qrCode, photoUrlBw: bwUpload.secure_url, qrCodeBw };
 }
@@ -90,7 +98,7 @@ async function uploadClipAndGenerateQr(clipBuffer, sessionId) {
   // (unlike a photo, which can be long-pressed and saved). The "attachment"
   // flag makes the same file arrive as a download instead.
   const downloadUrl = cloudinary.url(upload.public_id, { resource_type: 'video', secure: true, version: upload.version, format: upload.format, flags: 'attachment:snaplicious-video' });
-  const qrCodeClip = await QRCode.toDataURL(downloadUrl, { margin: 1, width: 512 });
+  const qrCodeClip = await QRCode.toDataURL(downloadUrl, QR_OPTIONS);
   return { clipUrl: downloadUrl, qrCodeClip };
 }
 
