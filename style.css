@@ -157,3 +157,5 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 /* No white edge around the frame choices: the see-through border showed the
    white background behind it. */
 .brand-screen .shot-option-thumb { background: transparent; }
+/* The chosen frame only lifts up (no red border), as the owner asked. */
+.brand-screen .shot-option.selected .shot-option-thumb { border-color: transparent; }
