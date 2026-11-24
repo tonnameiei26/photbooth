@@ -152,3 +152,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .brand-screen .pill-button { background: var(--chapter-navy); border-color: var(--chapter-navy); color: var(--chapter-cream); }
 .brand-screen .selection-summary, .brand-screen .status-message { color: var(--chapter-navy); }
 .brand-screen .camera-stage, .brand-screen .photo-preview-wrap { border-color: var(--chapter-navy); }
+/* No white edge around the frame choices: the see-through border showed the
+   white background behind it. */
+.brand-screen .shot-option-thumb { background: transparent; }
