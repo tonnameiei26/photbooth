@@ -12,6 +12,9 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #fff; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
 .brand-logo { display: block; width: min(10rem, 90vw); height: auto; }
 .brand-logo--compact { width: min(10rem, 90vw); margin-bottom: -.25rem; }
+/* The CHAPTER logo is cream like on the client's frames; a soft shadow lets it
+   stand out from the cream screen background. */
+.brand-logo--chapter { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .4)) drop-shadow(0 3px 5px rgba(0, 0, 0, .35)); }
 .script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.6rem, 4vh, 2.6rem); line-height: 1.15; max-width: 40rem; }
 .pill-button { display: inline-flex; align-items: center; justify-content: center; min-height: 3.2rem; padding: .6rem 2rem; border: 1px solid #1a1a1a; border-radius: 999px; background: #fff; font-family: var(--script); font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .pill-button:disabled { opacity: .35; }
