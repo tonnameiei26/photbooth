@@ -215,10 +215,13 @@ const FEED = Buffer.from([0x0a, 0x0a, 0x0a, 0x0a]);
 // too, so the blank edges at both ends match instead of one end being flush and
 // the other wide. (ESC J "feed n dots" was ignored by this printer, so the
 // margin is sent as a block of white raster rows instead.) In print dots
-// (8 dots = 1mm); off (0) by default since the frames print with white bands
-// (PRINT_INVERT_BANDS), where an uneven blank edge does not show; 96 matched
-// the two ends when the bands printed solid black.
-const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 0) || 0);
+// (8 dots = 1mm). Blank rows at either end of the picture itself are trimmed
+// off first (see trimBlankRows), so both paper edges are set by the printer
+// alone: 96 dots made the two ends match on paper (tested 2026-11-20 with
+// frames that had no white space at the ends; re-asked 2026-11-24 when the
+// CHAPTER print frame came out with a much wider bottom edge).
+// Set PRINT_TRAILING_MARGIN_DOTS in .env to fine-tune (more = wider top edge).
+const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 96) || 0);
 const TRAILING_MARGIN = TRAILING_MARGIN_DOTS
   ? Buffer.concat([
     Buffer.from([0x1d, 0x76, 0x30, 0x00, WIDTH_BYTES & 0xff, (WIDTH_BYTES >> 8) & 0xff, TRAILING_MARGIN_DOTS & 0xff, (TRAILING_MARGIN_DOTS >> 8) & 0xff]),
@@ -361,8 +364,24 @@ function stampQr(values, width, height, framePath) {
   }
 }
 
+// Cuts off rows with no black dot at the top and bottom of the picture, so
+// white space in the frame design does not add to the printer's own margins.
+function trimBlankRows(values, width, height) {
+  const rowHasInk = (y) => {
+    for (let x = 0; x < width; x++) if (values[y * width + x] < 128) return true;
+    return false;
+  };
+  let first = 0;
+  while (first < height - 1 && !rowHasInk(first)) first++;
+  let last = height - 1;
+  while (last > first && !rowHasInk(last)) last--;
+  return { values: values.subarray(first * width, (last + 1) * width), height: last - first + 1 };
+}
+
 async function dataUrlToRaster(dataUrl, framePath, toneName) {
-  const { dithered, width, height } = await ditherForPrint(dataUrl, framePath, toneName);
+  const result = await ditherForPrint(dataUrl, framePath, toneName);
+  const width = result.width;
+  const { values: dithered, height } = trimBlankRows(result.dithered, width, result.height);
   const packed = packBits(dithered, width, height);
 
   const header = Buffer.from([
