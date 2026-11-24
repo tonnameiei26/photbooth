@@ -217,11 +217,11 @@ const FEED = Buffer.from([0x0a, 0x0a, 0x0a, 0x0a]);
 // margin is sent as a block of white raster rows instead.) In print dots
 // (8 dots = 1mm). Blank rows at either end of the picture itself are trimmed
 // off first (see trimBlankRows), so both paper edges are set by the printer
-// alone: 96 dots made the two ends match on paper (tested 2026-11-20 with
-// frames that had no white space at the ends; re-asked 2026-11-24 when the
-// CHAPTER print frame came out with a much wider bottom edge).
+// alone. 72 dots gives a top edge of about 10mm, chosen by the owner on paper
+// on 2026-11-24 from labelled 10mm/11mm test prints (96 dots, about 13mm,
+// matched the bottom edge exactly but looked too wide).
 // Set PRINT_TRAILING_MARGIN_DOTS in .env to fine-tune (more = wider top edge).
-const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 96) || 0);
+const TRAILING_MARGIN_DOTS = Math.max(0, Number(process.env.PRINT_TRAILING_MARGIN_DOTS ?? 72) || 0);
 const TRAILING_MARGIN = TRAILING_MARGIN_DOTS
   ? Buffer.concat([
     Buffer.from([0x1d, 0x76, 0x30, 0x00, WIDTH_BYTES & 0xff, (WIDTH_BYTES >> 8) & 0xff, TRAILING_MARGIN_DOTS & 0xff, (TRAILING_MARGIN_DOTS >> 8) & 0xff]),
