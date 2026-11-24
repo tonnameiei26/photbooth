@@ -9,9 +9,10 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .screen { display: none; min-height: 100svh; min-height: 100dvh; padding: clamp(6rem, 12vh, 9rem) clamp(1.25rem, 9vw, 9rem) clamp(2rem, 5vw, 4rem); position: relative; isolation: isolate; }
 .screen.screen--active { display: flex; }
 /* Snaplicious brand screens (start / shots / payment / camera) */
-/* Screen colour for the CHAPTER event: the sage of the cover, so the cream
-   logo shows. Change back to #fff after the event. */
-.brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #b1ae96; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
+/* Screen colour for the CHAPTER event: a lighter, warmer take on the cover's
+   sage (#b1ae96), picked by the owner on the iPad ("E" on swatches.html).
+   Change back to #fff after the event. */
+.brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #c6c19f; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
 .brand-logo { display: block; width: min(10rem, 90vw); height: auto; }
 .brand-logo--compact { width: min(10rem, 90vw); margin-bottom: -.25rem; }
 .script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.6rem, 4vh, 2.6rem); line-height: 1.15; max-width: 40rem; }
