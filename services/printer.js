@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const QRCode = require('qrcode');
 
 const DEVICE_PATH = process.env.PRINTER_DEVICE || '/dev/usb/lp0';
 const PRINT_WIDTH_DOTS = 576; // 80mm paper, 203dpi thermal head, ~72mm printable width
@@ -311,7 +312,53 @@ async function ditherForPrint(dataUrl, framePath, toneName = ACTIVE_TONE) {
     }
   }
   const dithered = floydSteinbergDither(data, width, height);
+  stampQr(dithered, width, height, framePath);
   return { dithered, width, height };
+}
+
+// A QR code drawn inside a frame picture does not survive being shrunk to the
+// printer's 576 dots: its squares land between print dots and blur, so phones
+// cannot scan it. For frames listed here, the frame's QR is wiped and a fresh
+// one is drawn straight onto the print dots instead, with every square exactly
+// QR_DOTS_PER_MODULE dots wide, so it prints perfectly sharp.
+// Positions are in the frame picture's own pixels (1067 wide):
+//  - clear: the box around the frame's own QR, printed as blank paper
+//  - centerX: the QR's middle, left to right
+//  - top/bottom: the free white space it is centred in (between the thick bar
+//    above and the barcode below), so it keeps a white border to scan well.
+const QR_DOTS_PER_MODULE = 4;
+const CHAPTER_WEBSITE = 'https://www.chapterthailand.com/';
+const PRINT_QR_STAMPS = {
+  'assets/chapter-gold-print.png': { url: CHAPTER_WEBSITE, clear: [826, 1661, 993, 1829], centerX: 909.5, top: 1617, bottom: 1843 },
+  'assets/chapter-navy-2-print.png': { url: CHAPTER_WEBSITE, clear: [816, 1639, 983, 1809], centerX: 899.5, top: 1587, bottom: 1830 }
+};
+const FRAME_SOURCE_WIDTH = 1067;
+
+function stampQr(values, width, height, framePath) {
+  const stamp = PRINT_QR_STAMPS[framePath];
+  if (!stamp) return;
+  const scale = width / FRAME_SOURCE_WIDTH;
+  // Writes one print dot, given in upright (not yet rotated) position.
+  const setDot = (x, y, black) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const at = ROTATE_180 ? (height - 1 - y) * width + (width - 1 - x) : y * width + x;
+    values[at] = black ? 0 : 255;
+  };
+  const [clearLeft, clearTop, clearRight, clearBottom] = stamp.clear.map((value) => Math.round(value * scale));
+  for (let y = clearTop; y <= clearBottom; y++) for (let x = clearLeft; x <= clearRight; x++) setDot(x, y, false);
+  // Error correction "L" keeps this address to 25x25 squares, so 4-dot squares fit the space.
+  const modules = QRCode.create(stamp.url, { errorCorrectionLevel: 'L' }).modules;
+  const size = modules.size * QR_DOTS_PER_MODULE;
+  const left = Math.round(stamp.centerX * scale - size / 2);
+  const top = Math.round(((stamp.top + stamp.bottom) / 2) * scale - size / 2);
+  for (let row = 0; row < modules.size; row++) {
+    for (let col = 0; col < modules.size; col++) {
+      const black = modules.get(row, col);
+      for (let dy = 0; dy < QR_DOTS_PER_MODULE; dy++) {
+        for (let dx = 0; dx < QR_DOTS_PER_MODULE; dx++) setDot(left + col * QR_DOTS_PER_MODULE + dx, top + row * QR_DOTS_PER_MODULE + dy, black);
+      }
+    }
+  }
 }
 
 async function dataUrlToRaster(dataUrl, framePath, toneName) {
