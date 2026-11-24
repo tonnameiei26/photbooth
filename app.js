@@ -128,10 +128,10 @@ const FRAME_LAYOUTS = {
       { x: 94, y: 912, width: 880, height: 624 }
     ],
     print: {
-      src: 'assets/chapter-navy-2-print.png', width: 1067, height: 2000,
+      src: 'assets/chapter-navy-2-print.png', width: 1067, height: 2072,
       slots: [
-        { x: 84, y: 231, width: 903, height: 630 },
-        { x: 84, y: 894, width: 903, height: 638 }
+        { x: 84, y: 255, width: 903, height: 630 },
+        { x: 84, y: 918, width: 903, height: 638 }
       ]
     }
   },
@@ -144,12 +144,12 @@ const FRAME_LAYOUTS = {
       { x: 559, y: 924, width: 418, height: 626 }
     ],
     print: {
-      src: 'assets/chapter-gold-print.png', width: 1067, height: 2000,
+      src: 'assets/chapter-gold-print.png', width: 1067, height: 2072,
       slots: [
-        { x: 82, y: 230, width: 431, height: 653 },
-        { x: 557, y: 230, width: 431, height: 653 },
-        { x: 82, y: 911, width: 431, height: 653 },
-        { x: 557, y: 911, width: 431, height: 653 }
+        { x: 82, y: 254, width: 431, height: 653 },
+        { x: 557, y: 254, width: 431, height: 653 },
+        { x: 82, y: 935, width: 431, height: 653 },
+        { x: 557, y: 935, width: 431, height: 653 }
       ]
     }
   }

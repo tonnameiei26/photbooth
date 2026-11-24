@@ -332,8 +332,8 @@ async function ditherForPrint(dataUrl, framePath, toneName = ACTIVE_TONE) {
 const QR_DOTS_PER_MODULE = 4;
 const CHAPTER_WEBSITE = 'https://www.chapterthailand.com/';
 const PRINT_QR_STAMPS = {
-  'assets/chapter-gold-print.png': { url: CHAPTER_WEBSITE, clear: [826, 1661, 993, 1829], centerX: 909.5, top: 1617, bottom: 1843 },
-  'assets/chapter-navy-2-print.png': { url: CHAPTER_WEBSITE, clear: [816, 1639, 983, 1809], centerX: 899.5, top: 1587, bottom: 1830 }
+  'assets/chapter-gold-print.png': { url: CHAPTER_WEBSITE, clear: [826, 1733, 993, 1901], centerX: 909.5, top: 1665, bottom: 1915 },
+  'assets/chapter-navy-2-print.png': { url: CHAPTER_WEBSITE, clear: [816, 1711, 983, 1881], centerX: 899.5, top: 1635, bottom: 1902 }
 };
 const FRAME_SOURCE_WIDTH = 1067;
 
@@ -412,4 +412,4 @@ function isReady() {
   return fs.existsSync(DEVICE_PATH);
 }
 
-module.exports = { printPhoto, isReady, ditherForPrint, dataUrlToRaster, ACTIVE_TONE };
+module.exports = { printPhoto, isReady, ditherForPrint, dataUrlToRaster, ACTIVE_TONE, PRINT_QR_STAMPS };
