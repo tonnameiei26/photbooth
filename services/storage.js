@@ -17,6 +17,8 @@ const JPEG_QUALITY = 92;
 // Colours of the download QR codes shown on the iPad. Black on white by
 // default; an event can match its theme with QR_DARK_COLOR / QR_LIGHT_COLOR in
 // .env (keep the dark colour much darker than the light one so phones scan it).
+// Put the colour in quotes, e.g. QR_DARK_COLOR="#001c4e": a bare # starts a
+// comment in .env, so an unquoted colour is read as empty.
 const QR_OPTIONS = {
   margin: 1,
   width: 512,
