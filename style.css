@@ -141,3 +141,14 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 	.camera-stage { --stage-width: 80vw; --stage-height: 52svh; }
 	.qr-box { width: min(60vw, 28rem); }
 }
+
+/* ---- CHAPTER event colours (2026-11-25) ----
+   Matches the client's cover: sage background, cream headings, navy text and
+   buttons, maroon accent. Delete this block (and set .brand-screen back to
+   #fff) to return to the normal Snaplicious look. */
+:root { --chapter-navy: #001c4e; --chapter-cream: #faf3df; --logo-accent: #782026; }
+.brand-screen { color: var(--chapter-navy); }
+.brand-screen .script-heading { color: var(--chapter-cream); }
+.brand-screen .pill-button { background: var(--chapter-navy); border-color: var(--chapter-navy); color: var(--chapter-cream); }
+.brand-screen .selection-summary, .brand-screen .status-message { color: var(--chapter-navy); }
+.brand-screen .camera-stage, .brand-screen .photo-preview-wrap { border-color: var(--chapter-navy); }
