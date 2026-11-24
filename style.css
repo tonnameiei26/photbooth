@@ -12,10 +12,6 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-
 .brand-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #fff; color: #1a1a1a; gap: clamp(1.5rem, 4vh, 3rem); }
 .brand-logo { display: block; width: min(10rem, 90vw); height: auto; }
 .brand-logo--compact { width: min(10rem, 90vw); margin-bottom: -.25rem; }
-/* The CHAPTER logo in cream on a navy badge, like the header band of the
-   client's frames. The padding is added around the logo, so the logo itself
-   stays the same size as other brand logos (10rem wide). */
-.brand-logo--chapter { box-sizing: content-box; padding: 1rem 1.6rem; background: #001c4e; border-radius: .9rem; box-shadow: 0 .4rem 1.2rem rgba(0, 0, 0, .18); }
 .script-heading { margin: 0; font-family: var(--script); font-weight: 600; font-size: clamp(1.6rem, 4vh, 2.6rem); line-height: 1.15; max-width: 40rem; }
 .pill-button { display: inline-flex; align-items: center; justify-content: center; min-height: 3.2rem; padding: .6rem 2rem; border: 1px solid #1a1a1a; border-radius: 999px; background: #fff; font-family: var(--script); font-size: clamp(1.1rem, 2.5vw, 1.4rem); }
 .pill-button:disabled { opacity: .35; }
